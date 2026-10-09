@@ -40,6 +40,14 @@
 
 - 未专项适配，自测
 
+## 打赏
+
+感谢支持果+。也可以在模块的「设置 → 打赏」中查看二维码并保存至相册。
+
+| 支付宝 | 微信支付 |
+| --- | --- |
+| <img src="app/src/main/assets/donation/alipay.jpg" alt="支付宝收款二维码" width="260"> | <img src="app/src/main/assets/donation/wechat.png" alt="微信支付收款二维码" width="260"> |
+
 ## 构建与测试
 
 环境：JDK 17、Android SDK 36、Gradle Wrapper 9.5.1、Android Gradle Plugin 8.13.0、Kotlin 2.1.0。

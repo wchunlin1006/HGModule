@@ -252,6 +252,7 @@ class MainActivity : Activity() {
                 }
                 action("检查更新", ::manualCheck)
                 action("GitHub 仓库") { UpdateChecker.openUrl(this, UpdateChecker.REPO_URL) }
+                action("打赏") { com.hmodule.ui.DonationPage.show(this) }
                 content.addView(actions)
                 updateStatus = MiuixUi.text(this, "", 13f, p.secondary).apply {
                     visibility = View.GONE
