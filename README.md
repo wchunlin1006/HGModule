@@ -46,7 +46,7 @@
 
 | 支付宝 | 微信支付 |
 | --- | --- |
-| <img src="app/src/main/assets/donation/alipay.jpg" alt="支付宝收款二维码" width="260"> | <img src="app/src/main/assets/donation/wechat.png" alt="微信支付收款二维码" width="260"> |
+| <img src="app/src/main/assets/donation/alipay.png" alt="支付宝收款二维码" width="260"> | <img src="app/src/main/assets/donation/wechat.png" alt="微信支付收款二维码" width="260"> |
 
 ## 构建与测试
 

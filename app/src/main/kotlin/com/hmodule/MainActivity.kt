@@ -169,20 +169,23 @@ class MainActivity : Activity() {
                 content.addView(info)
             }
             if (index == 2) {
-                heading("外观与配置")
-                val preferencesCard = MiuixUi.card(this)
-                fun preference(title: String, value: String, clicked: () -> Unit) {
-                    val row = MiuixUi.settingsTitle(this, title).apply {
+                heading("主题")
+                val themeCard = MiuixUi.card(this)
+                fun preference(card: LinearLayout, title: String, value: String, settingsIcon: Boolean = true, clicked: () -> Unit) {
+                    val row = (if (settingsIcon) MiuixUi.settingsTitle(this, title) else LinearLayout(this).apply {
+                        gravity = android.view.Gravity.CENTER_VERTICAL
+                        addView(MiuixUi.text(this@MainActivity, title, 16f, p.text))
+                    }).apply {
                         minimumHeight = dp(62); setPadding(dp(20), dp(14), dp(20), dp(14))
                         background = MiuixUi.ripple(this@MainActivity)
                         setOnClickListener { clicked() }
                     }
                     row.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
                     row.addView(MiuixUi.text(this, value, 14f, p.secondary))
-                    MiuixUi.addRow(preferencesCard, row)
+                    MiuixUi.addRow(card, row)
                 }
                 val themes = linkedMapOf("system" to "跟随系统", "light" to "亮色模式", "dark" to "暗色模式")
-                preference("主题设置", themes[prefs.getString(com.hmodule.config.ModuleConfig.THEME,"system")] ?: "跟随系统") {
+                preference(themeCard, "主题设置", themes[prefs.getString(com.hmodule.config.ModuleConfig.THEME,"system")] ?: "跟随系统") {
                     val options = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                     lateinit var dialog: android.app.Dialog
                     themes.forEach { (key, title) -> options.addView(MiuixUi.text(this,
@@ -194,7 +197,54 @@ class MainActivity : Activity() {
                     }) }
                     dialog = MiuixUi.showPopup(this,"主题设置",options)
                 }
-                preference("清除配置", "") {
+                content.addView(themeCard)
+                heading("配置")
+                val configurationCard = MiuixUi.card(this)
+                val profileNames = listOf(TargetNames.CN_PACKAGE to cn, TargetNames.OVERSEA_PACKAGE to overseas)
+                    .mapNotNull { (pkg, target) -> target?.let {
+                        val exact = com.hmodule.adaptation.AdaptationStore.exact(pkg, it.versionName.orEmpty(), it.longVersionCode)
+                        val profile = exact ?: com.hmodule.adaptation.AdaptationStore.nearest(pkg, it.versionName.orEmpty())
+                        profile?.let { config -> com.hmodule.adaptation.AdaptationStore.fileName(config) +
+                            if (exact == null) "（相邻版本）" else "" }
+                    } }.distinct()
+                MiuixUi.addRow(configurationCard, LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(20), dp(16), dp(20), dp(16))
+                    addView(MiuixUi.text(this@MainActivity, "配置文件", 16f, p.text))
+                    addView(MiuixUi.text(this@MainActivity, profileNames.joinToString("\n").ifEmpty { "未加载 JSON 配置" }, 13f, p.secondary).apply {
+                        setPadding(0, dp(6), 0, 0)
+                    })
+                })
+                val launcherRow = LinearLayout(this).apply {
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    minimumHeight = dp(72)
+                    setPadding(dp(20), dp(12), dp(16), dp(12))
+                    background = MiuixUi.ripple(this@MainActivity)
+                }
+                launcherRow.addView(LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(MiuixUi.text(this@MainActivity, "隐藏图标", 16f, p.text))
+                    addView(MiuixUi.text(this@MainActivity, "隐藏后仍可从 LSPosed 打开", 13f, p.secondary).apply {
+                        setPadding(0, dp(6), 0, 0)
+                    })
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+                val launcherToggle = android.widget.Switch(this).apply {
+                    contentDescription = "隐藏图标"
+                    isChecked = com.hmodule.ui.LauncherIcon.isHidden(this@MainActivity)
+                    MiuixUi.styleSwitch(this)
+                    setOnCheckedChangeListener { toggle, checked ->
+                        if (!com.hmodule.ui.LauncherIcon.setHidden(this@MainActivity, checked)) {
+                            toggle.setOnCheckedChangeListener(null)
+                            toggle.isChecked = com.hmodule.ui.LauncherIcon.isHidden(this@MainActivity)
+                            android.widget.Toast.makeText(this@MainActivity, "图标设置失败，请重试", android.widget.Toast.LENGTH_SHORT).show()
+                            renderPage()
+                        }
+                    }
+                }
+                launcherRow.addView(launcherToggle)
+                launcherRow.setOnClickListener { launcherToggle.isChecked = !launcherToggle.isChecked }
+                MiuixUi.addRow(configurationCard, launcherRow)
+                preference(configurationCard, "清除配置", "", settingsIcon = false) {
                     val confirmation = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                     confirmation.addView(MiuixUi.text(this,"清除所有功能设置，恢复默认值。",15f,p.text))
                     lateinit var dialog: android.app.Dialog
@@ -220,7 +270,7 @@ class MainActivity : Activity() {
                     confirmation.addView(buttons)
                     dialog = MiuixUi.showPopup(this,"清除配置",confirmation,showCloseButton = false)
                 }
-                content.addView(preferencesCard)
+                content.addView(configurationCard)
                 heading("适配信息")
                 val adaptation = MiuixUi.card(this)
                 MiuixUi.addRow(adaptation, LinearLayout(this).apply {

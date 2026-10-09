@@ -156,7 +156,9 @@ class FloatingNavigationTest {
         val pager=views(activity.window.decorView).filterIsInstance<SwipePageLayout>().single()
         pager.selectPage(2,false)
         val text=labels(activity).map { it.text.toString() }
-        assertTrue(text.indexOf("外观与配置")<text.indexOf("项目与更新"))
+        assertTrue(text.containsAll(listOf("主题","配置","项目与更新")))
+        assertTrue(text.indexOf("主题")<text.indexOf("配置"))
+        assertTrue(text.indexOf("配置")<text.indexOf("项目与更新"))
         val prefs=ModuleConfig.local(activity)
         prefs.edit().putBoolean("master_on",true).commit()
         (labels(activity).single { it.text.toString()=="清除配置" }.parent as View).performClick()

@@ -71,12 +71,12 @@ class MainNavigationTest {
         assertFalse(labels(activity).any { it.text.toString() == "项目与更新" })
         controller.pause().stop().destroy()
     }
-    @Test fun manifestExposesLsposedSettingsAndNoLauncherIcon() {
+    @Test fun manifestExposesSeparateLsposedAndLauncherEntries() {
         val manager = RuntimeEnvironment.getApplication().packageManager
         val packageName = RuntimeEnvironment.getApplication().packageName
         val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(packageName)
         val module = Intent(Intent.ACTION_MAIN).addCategory("de.robv.android.xposed.category.MODULE_SETTINGS").setPackage(packageName)
-        assertTrue(manager.queryIntentActivities(launcher,0).isEmpty())
+        assertEquals("com.hmodule.LauncherAlias",manager.queryIntentActivities(launcher,0).single().activityInfo.name)
         assertEquals(MainActivity::class.java.name,manager.queryIntentActivities(module,0).single().activityInfo.name)
     }
     @Test fun hostEntryOpensFunctionsWithoutCardAndReusedActivityCanRetarget() {

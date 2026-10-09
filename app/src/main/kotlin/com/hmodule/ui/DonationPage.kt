@@ -17,7 +17,7 @@ import java.util.UUID
 import kotlin.concurrent.thread
 
 enum class DonationCode(val title: String, val fileName: String, val mimeType: String) {
-    ALIPAY("支付宝", "alipay.jpg", "image/jpeg"),
+    ALIPAY("支付宝", "alipay.png", "image/png"),
     WECHAT("微信支付", "wechat.png", "image/png");
 
     val assetPath get() = "donation/$fileName"

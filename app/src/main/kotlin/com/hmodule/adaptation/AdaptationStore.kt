@@ -90,6 +90,9 @@ object AdaptationStore {
     fun exact(pkg: String, version: String, code: Long = -1) = profiles().find {
         it.names.packageName == pkg && it.names.versionName == version && (code < 0 || code == it.versionCode)
     }
+    /** Repository profiles use their target version and independently incremented h revision. */
+    fun fileName(profile: AdaptationProfile): String =
+        "gp-${profile.names.versionName}-h${profile.revision.toString().padStart(3, '0')}.json"
     fun nearest(pkg: String, version: String): AdaptationProfile? {
         if (!version.matches(Regex("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"))) return null
         val prefix = version.split('.').take(2)
