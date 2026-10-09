@@ -17,6 +17,8 @@ def generate(directory):
         assert len(raw) <= 256 * 1024 and profile["schemaVersion"] == 2
         assert profile["hookContract"] == "guoplus-hooks-v1" and profile["revision"] > 0
         host = profile["host"]
+        prefix = "gp" if host["packageName"] == "com.phoenix.read" else "gp-oversea"
+        assert name == f"{prefix}-{host['versionName']}-h{profile['revision']:03d}.json", "Filename must match host version and revision"
         identity = (host["packageName"], host["versionName"], profile["versionCode"])
         assert identity not in targets, "Duplicate host version"
         targets.add(identity)

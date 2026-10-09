@@ -12,7 +12,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ProfileV2Test {
-    private fun raw() = RuntimeEnvironment.getApplication().assets.open("adaptation/CN-7.3.9.32.json").bufferedReader().use { it.readText() }
+    private fun raw() = RuntimeEnvironment.getApplication().assets.open("adaptation/gp-7.3.9.32-h002.json").bufferedReader().use { it.readText() }
     private fun feature(root: JSONObject, id: String) = root.getJSONArray("features").let { array ->
         (0 until array.length()).map { array.getJSONObject(it) }.single { it.getString("id") == id }
     }
@@ -78,7 +78,7 @@ class ProfileV2Test {
     }
 
     @Test fun allBuiltinSignaturesAgreeWithModuleBindingsAndCurrentContract() {
-        for (file in listOf("CN-7.3.2.32.json","CN-7.3.9.32.json")) {
+        for (file in listOf("gp-7.3.2.32-h002.json","gp-7.3.9.32-h002.json")) {
             val profile=ProfileJson.parse(RuntimeEnvironment.getApplication().assets.open("adaptation/$file").bufferedReader().use { it.readText() })
             for (f in profile.features.filter { it.outcome=="PASS" }) {
                 val expected=FeatureContracts.expected(f.id,profile.names)

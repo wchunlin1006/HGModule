@@ -28,6 +28,7 @@ class MainNavigationTest {
     @Before fun offline() {
         UpdateChecker::class.java.getDeclaredField("checking").apply { isAccessible = true }.setBoolean(null,true)
         ModuleConfig.local(RuntimeEnvironment.getApplication()).edit().clear().commit()
+        com.hmodule.adaptation.AdaptationStore.loadAssets(RuntimeEnvironment.getApplication())
     }
     @After fun finish() {
         UpdateChecker::class.java.getDeclaredField("checking").apply { isAccessible = true }.setBoolean(null,false)
@@ -106,8 +107,9 @@ class MainNavigationTest {
         })
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val shown = labels(controller.get())
-        assertTrue(shown.any { it.text.toString() == "部分适配" })
-        assertTrue(shown.any { it.text.toString().contains("参考 7.3.9.32") })
+        assertTrue(shown.map { it.text.toString() }.toString(), shown.any { it.text.toString() == "部分适配" })
+        assertTrue(shown.any { it.text.toString() == "7.3.10.32" })
+        assertFalse(shown.any { it.text.toString().contains("参考 7.3.9.32") || it.text.toString().contains("适配 JSON") || it.text.toString().contains("配置分组") })
         assertFalse(shown.any { it.text.toString() in setOf("总开关", "功能", "设置") })
         controller.pause().stop().destroy()
     }

@@ -155,9 +155,7 @@ class MainActivity : Activity() {
                     val neighbour = if (exact == null) com.hmodule.adaptation.AdaptationStore.nearest(pkg, version) else null
                     val partial = exact?.features?.any { it.outcome != "PASS" } == true
                     val status = if (partial) "部分适配" else if (TargetNames.isSupported(pkg, version, installed.longVersionCode)) null else if (neighbour != null) "部分适配" else "未适配"
-                    val detail = exact?.let { "\n适配 JSON v${it.schemaVersion} · revision ${it.revision} · 配置分组 ${it.features.count { f -> f.outcome == "PASS" }}/${it.features.size}" }
-                        ?: neighbour?.let { "\n兼容模式 · 参考 ${it.names.versionName}，仅启用通过校验的映射" }.orEmpty()
-                    MiuixUi.addRow(info, information(title, value + detail, status))
+                    MiuixUi.addRow(info, information(title, value, status))
                 }
                 val date = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.CHINA).apply {
                     timeZone = TimeZone.getTimeZone("Asia/Shanghai")

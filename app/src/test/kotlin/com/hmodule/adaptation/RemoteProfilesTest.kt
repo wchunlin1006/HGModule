@@ -19,12 +19,12 @@ import java.net.URL
 @Config(sdk = [34])
 class RemoteProfilesTest {
     private val app get() = RuntimeEnvironment.getApplication()
-    private fun raw() = app.assets.open("adaptation/CN-7.3.9.32.json").bufferedReader().use { it.readText() }
+    private fun raw() = app.assets.open("adaptation/gp-7.3.9.32-h002.json").bufferedReader().use { it.readText() }
     private fun newer() = JSONObject(raw()).put("revision", 3).toString()
     private fun manifest(raw: String): JSONObject {
         val p = ProfileJson.parse(raw)
         return JSONObject().put("schemaVersion", 1).put("hookContract", "guoplus-hooks-v1").put("profiles", JSONArray().put(
-            JSONObject().put("file", "CN-7.3.9.32.json").put("packageName", p.names.packageName)
+            JSONObject().put("file", "gp-${p.names.versionName}-h${p.revision.toString().padStart(3, '0')}.json").put("packageName", p.names.packageName)
                 .put("versionName", p.names.versionName).put("versionCode", p.versionCode)
                 .put("revision", p.revision).put("sha256", RemoteProfiles.sha256(raw))))
     }
@@ -149,6 +149,7 @@ class RemoteProfilesTest {
     @Test fun hostFetchesOnlyItsOwnPackageAndRepositoryManifestMatchesBundledFiles() {
         val index = app.assets.open("adaptation/manifest.json").bufferedReader().use { it.readText() }
         for (entry in RemoteProfiles.manifest(index)) {
+            assertEquals("gp-${entry.version}-h${entry.revision.toString().padStart(3, '0')}.json", entry.file)
             val bundled = app.assets.open("adaptation/${entry.file}").bufferedReader().use { it.readText() }
             assertEquals(entry.sha256, RemoteProfiles.sha256(bundled))
         }

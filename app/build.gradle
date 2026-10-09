@@ -11,8 +11,8 @@ android {
         applicationId 'com.hmodule'
         minSdk 29
         targetSdk 34
-        versionCode 20260811
-        versionName "1.0.1"
+        versionCode 1
+        versionName "v1.0.0"
         buildConfigField 'long', 'BUILD_TIME_MS', "${System.currentTimeMillis()}L"
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'

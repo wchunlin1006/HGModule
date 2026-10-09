@@ -24,5 +24,7 @@ jobs:
         run: bash gradlew testDebugUnitTest assembleDebug --console=plain
       - uses: actions/upload-artifact@v4
         with:
-          name: guoplus-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: HGModule-v1.0.0
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            adaptation/gp-*.json

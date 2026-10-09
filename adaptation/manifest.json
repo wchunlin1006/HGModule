@@ -3,7 +3,7 @@
   "hookContract": "guoplus-hooks-v1",
   "profiles": [
     {
-      "file": "CN-7.3.2.32.json",
+      "file": "gp-7.3.2.32-h002.json",
       "packageName": "com.phoenix.read",
       "versionName": "7.3.2.32",
       "versionCode": 73232,
@@ -11,7 +11,7 @@
       "sha256": "8b880970d9a4a29312f30121339fa80feb917f7d86808728bd989fc11c420126"
     },
     {
-      "file": "CN-7.3.9.32.json",
+      "file": "gp-7.3.9.32-h002.json",
       "packageName": "com.phoenix.read",
       "versionName": "7.3.9.32",
       "versionCode": 73932,

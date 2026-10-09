@@ -188,7 +188,7 @@ class FloatingNavigationTest {
     }
     @Test fun sharedStatusCardTextsHaveIdenticalLeftEdges() {
         val activity=Robolectric.buildActivity(Activity::class.java).setup().get()
-        val card=MiuixUi.statusCard(activity,"模块已激活","模块版本  1.0.1","libxposed API 102")
+        val card=MiuixUi.statusCard(activity,"模块已激活","模块版本  v1.0.0","libxposed API 102")
         layout(card,600,200)
         val texts=views(card).filterIsInstance<TextView>()
         assertEquals(3,texts.size)

@@ -19,7 +19,7 @@ import java.io.File
 @Config(sdk = [34])
 class AdaptationTest {
     private val app get() = RuntimeEnvironment.getApplication()
-    private fun raw() = app.assets.open("adaptation/CN-7.3.9.32.json").bufferedReader().use { it.readText() }
+    private fun raw() = app.assets.open("adaptation/gp-7.3.9.32-h002.json").bufferedReader().use { it.readText() }
     private fun revised(revision: Int) = JSONObject(raw()).put("revision", revision).toString()
     private fun mapping(root: JSONObject, key: String): JSONObject = root.getJSONArray("features").let { features ->
         (0 until features.length()).map { features.getJSONObject(it).getJSONObject("mappings") }.single { it.has(key) }
