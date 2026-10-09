@@ -8,9 +8,9 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.Gravity
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.Toast
 import java.io.IOException
 import java.util.UUID
@@ -55,23 +55,32 @@ object DonationImages {
 object DonationPage {
     fun show(activity: Activity) = MiuixUi.showPage(activity, "打赏", content(activity))
 
-    internal fun content(activity: Activity): ScrollView {
+    internal fun content(activity: Activity): LinearLayout {
         val p = MiuixUi.palette(activity)
         fun dp(value: Int) = MiuixUi.dp(activity, value)
         val body = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(4), dp(16), dp(28))
+            setPadding(dp(16), dp(4), dp(16), dp(24))
         }
         body.addView(MiuixUi.text(activity, "感谢支持果+", 15f, p.secondary).apply {
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, dp(20))
+            setPadding(0, 0, 0, dp(16))
         })
-        DonationCode.entries.forEach { code ->
-            val card = MiuixUi.card(activity).apply {
-                setPadding(dp(16), dp(18), dp(16), dp(16))
+        val columns = object : LinearLayout(activity) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val available = View.MeasureSpec.getSize(heightMeasureSpec)
+                val height = if (View.MeasureSpec.getMode(heightMeasureSpec) == View.MeasureSpec.UNSPECIFIED)
+                    dp(420) else minOf(dp(420), available)
+                super.onMeasure(widthMeasureSpec, View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
             }
-            card.addView(MiuixUi.text(activity, code.title, 18f, p.text, true).apply {
+        }.apply { orientation = LinearLayout.HORIZONTAL }
+        DonationCode.entries.forEachIndexed { index, code ->
+            val card = MiuixUi.card(activity).apply {
+                setPadding(dp(12), dp(16), dp(12), dp(12))
+            }
+            card.addView(MiuixUi.text(activity, code.title, 17f, p.text, true).apply {
+                gravity = Gravity.CENTER
                 setPadding(0, 0, 0, dp(14))
             })
             val image = ImageView(activity).apply {
@@ -80,8 +89,8 @@ object DonationPage {
                 contentDescription = "${code.title}收款二维码"
                 activity.assets.open(code.assetPath).use { setImageBitmap(BitmapFactory.decodeStream(it)) }
             }
-            card.addView(image, LinearLayout.LayoutParams(-1, -2))
-            val save = MiuixUi.text(activity, "保存至相册", 16f, p.accent, true).apply {
+            card.addView(image, LinearLayout.LayoutParams(-1, 0, 1f))
+            val save = MiuixUi.text(activity, "保存至相册", 15f, p.accent, true).apply {
                 gravity = Gravity.CENTER
                 background = MiuixUi.rounded(activity, p.soft, 14)
                 setOnClickListener { button ->
@@ -102,13 +111,13 @@ object DonationPage {
                 }
             }
             card.addView(save, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(16) })
-            body.addView(card, LinearLayout.LayoutParams(
-                minOf(dp(420), activity.resources.displayMetrics.widthPixels - dp(32)), -2
-            ).apply { bottomMargin = dp(16) })
+            columns.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
+                if (index == 0) marginEnd = dp(6) else marginStart = dp(6)
+            })
         }
-        return ScrollView(activity).apply {
-            isVerticalScrollBarEnabled = false
-            addView(body)
-        }
+        body.addView(columns, LinearLayout.LayoutParams(
+            minOf(dp(760), activity.resources.displayMetrics.widthPixels - dp(32)), 0, 1f
+        ))
+        return body
     }
 }
