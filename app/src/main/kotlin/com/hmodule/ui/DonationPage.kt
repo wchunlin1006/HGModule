@@ -63,8 +63,11 @@ object DonationPage {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(4), dp(16), dp(24))
         }
-        body.addView(MiuixUi.text(activity, "感谢支持果+", 15f, p.secondary).apply {
-            gravity = Gravity.CENTER
+        body.addView(MiuixUi.text(activity,
+            "若果+为你带来了更好的使用体验，欢迎通过打赏支持项目的持续开发、维护与版本适配，你的支持将成为项目不断完善的动力。",
+            15f, p.secondary).apply {
+            gravity = Gravity.START
+            setLineSpacing(dp(4).toFloat(), 1f)
             setPadding(0, 0, 0, dp(16))
         })
         val columns = object : LinearLayout(activity) {
