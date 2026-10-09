@@ -169,8 +169,8 @@ class MainActivity : Activity() {
                 content.addView(info)
             }
             if (index == 2) {
-                heading("主题")
-                val themeCard = MiuixUi.card(this)
+                heading("基础设置")
+                val basicCard = MiuixUi.card(this)
                 fun preference(card: LinearLayout, title: String, value: String, settingsIcon: Boolean = true, clicked: () -> Unit) {
                     val row = (if (settingsIcon) MiuixUi.settingsTitle(this, title) else LinearLayout(this).apply {
                         gravity = android.view.Gravity.CENTER_VERTICAL
@@ -185,7 +185,7 @@ class MainActivity : Activity() {
                     MiuixUi.addRow(card, row)
                 }
                 val themes = linkedMapOf("system" to "跟随系统", "light" to "亮色模式", "dark" to "暗色模式")
-                preference(themeCard, "主题设置", themes[prefs.getString(com.hmodule.config.ModuleConfig.THEME,"system")] ?: "跟随系统") {
+                preference(basicCard, "主题设置", themes[prefs.getString(com.hmodule.config.ModuleConfig.THEME,"system")] ?: "跟随系统") {
                     val options = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                     lateinit var dialog: android.app.Dialog
                     themes.forEach { (key, title) -> options.addView(MiuixUi.text(this,
@@ -197,24 +197,6 @@ class MainActivity : Activity() {
                     }) }
                     dialog = MiuixUi.showPopup(this,"主题设置",options)
                 }
-                content.addView(themeCard)
-                heading("配置")
-                val configurationCard = MiuixUi.card(this)
-                val profileNames = listOf(TargetNames.CN_PACKAGE to cn, TargetNames.OVERSEA_PACKAGE to overseas)
-                    .mapNotNull { (pkg, target) -> target?.let {
-                        val exact = com.hmodule.adaptation.AdaptationStore.exact(pkg, it.versionName.orEmpty(), it.longVersionCode)
-                        val profile = exact ?: com.hmodule.adaptation.AdaptationStore.nearest(pkg, it.versionName.orEmpty())
-                        profile?.let { config -> com.hmodule.adaptation.AdaptationStore.fileName(config) +
-                            if (exact == null) "（相邻版本）" else "" }
-                    } }.distinct()
-                MiuixUi.addRow(configurationCard, LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(20), dp(16), dp(20), dp(16))
-                    addView(MiuixUi.text(this@MainActivity, "配置文件", 16f, p.text))
-                    addView(MiuixUi.text(this@MainActivity, profileNames.joinToString("\n").ifEmpty { "未加载 JSON 配置" }, 13f, p.secondary).apply {
-                        setPadding(0, dp(6), 0, 0)
-                    })
-                })
                 val launcherRow = LinearLayout(this).apply {
                     gravity = android.view.Gravity.CENTER_VERTICAL
                     minimumHeight = dp(72)
@@ -243,7 +225,25 @@ class MainActivity : Activity() {
                 }
                 launcherRow.addView(launcherToggle)
                 launcherRow.setOnClickListener { launcherToggle.isChecked = !launcherToggle.isChecked }
-                MiuixUi.addRow(configurationCard, launcherRow)
+                MiuixUi.addRow(basicCard, launcherRow)
+                content.addView(basicCard)
+                heading("配置")
+                val configurationCard = MiuixUi.card(this)
+                val profileNames = listOf(TargetNames.CN_PACKAGE to cn, TargetNames.OVERSEA_PACKAGE to overseas)
+                    .mapNotNull { (pkg, target) -> target?.let {
+                        val exact = com.hmodule.adaptation.AdaptationStore.exact(pkg, it.versionName.orEmpty(), it.longVersionCode)
+                        val profile = exact ?: com.hmodule.adaptation.AdaptationStore.nearest(pkg, it.versionName.orEmpty())
+                        profile?.let { config -> com.hmodule.adaptation.AdaptationStore.fileName(config) +
+                            if (exact == null) "（相邻版本）" else "" }
+                    } }.distinct()
+                MiuixUi.addRow(configurationCard, LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(20), dp(16), dp(20), dp(16))
+                    addView(MiuixUi.text(this@MainActivity, "配置文件", 16f, p.text))
+                    addView(MiuixUi.text(this@MainActivity, profileNames.joinToString("\n").ifEmpty { "未加载 JSON 配置" }, 13f, p.secondary).apply {
+                        setPadding(0, dp(6), 0, 0)
+                    })
+                })
                 preference(configurationCard, "清除配置", "", settingsIcon = false) {
                     val confirmation = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                     confirmation.addView(MiuixUi.text(this,"清除所有功能设置，恢复默认值。",15f,p.text))
