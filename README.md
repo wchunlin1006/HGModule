@@ -44,8 +44,6 @@
 
 若果+为你带来了更好的使用体验，欢迎通过打赏支持项目的持续开发、维护与版本适配，你的支持将成为项目不断完善的动力。
 
-也可以在模块的「设置 → 打赏」中查看二维码并保存至相册。
-
 | 支付宝 | 微信支付 |
 | --- | --- |
 | <img src="app/src/main/assets/donation/alipay.jpg" alt="支付宝收款二维码" width="260"> | <img src="app/src/main/assets/donation/wechat.png" alt="微信支付收款二维码" width="260"> |
