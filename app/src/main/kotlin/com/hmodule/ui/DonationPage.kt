@@ -61,7 +61,8 @@ object DonationPage {
         val body = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(4), dp(16), dp(24))
+            // The shared header contributes 16dp below its title; keep the total gap at 25dp.
+            setPadding(dp(16), dp(9), dp(16), dp(24))
         }
         body.addView(MiuixUi.text(activity,
             "若果+为你带来了更好的使用体验，欢迎通过打赏支持项目的持续开发、维护与版本适配，你的支持将成为项目不断完善的动力。",
@@ -79,20 +80,21 @@ object DonationPage {
             }
         }.apply { orientation = LinearLayout.HORIZONTAL }
         DonationCode.entries.forEachIndexed { index, code ->
-            val card = MiuixUi.card(activity).apply {
-                setPadding(dp(12), dp(16), dp(12), dp(12))
+            val column = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(12), 0, dp(12), dp(12))
             }
-            card.addView(MiuixUi.text(activity, code.title, 17f, p.text, true).apply {
+            column.addView(MiuixUi.text(activity, code.title, 17f, p.text, true).apply {
                 gravity = Gravity.CENTER
-                setPadding(0, 0, 0, dp(14))
+                setPadding(0, 0, 0, dp(25))
             })
             val image = ImageView(activity).apply {
                 adjustViewBounds = true
-                scaleType = ImageView.ScaleType.FIT_CENTER
+                scaleType = ImageView.ScaleType.FIT_START
                 contentDescription = "${code.title}收款二维码"
                 activity.assets.open(code.assetPath).use { setImageBitmap(BitmapFactory.decodeStream(it)) }
             }
-            card.addView(image, LinearLayout.LayoutParams(-1, 0, 1f))
+            column.addView(image, LinearLayout.LayoutParams(-1, 0, 1f))
             val save = MiuixUi.text(activity, "保存至相册", 15f, p.accent, true).apply {
                 gravity = Gravity.CENTER
                 background = MiuixUi.rounded(activity, p.soft, 14)
@@ -113,8 +115,8 @@ object DonationPage {
                     }
                 }
             }
-            card.addView(save, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(16) })
-            columns.addView(card, LinearLayout.LayoutParams(0, -1, 1f).apply {
+            column.addView(save, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(16) })
+            columns.addView(column, LinearLayout.LayoutParams(0, -1, 1f).apply {
                 if (index == 0) marginEnd = dp(6) else marginStart = dp(6)
             })
         }
