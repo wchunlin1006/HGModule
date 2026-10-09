@@ -1,0 +1,2 @@
+-keep class com.hmodule.MainHook { *; }
+-keep class com.hmodule.MainActivity { *; }

@@ -1,0 +1,851 @@
+{
+  "schemaVersion": 2,
+  "hookContract": "guoplus-hooks-v1",
+  "revision": 2,
+  "versionCode": 73932,
+  "profileId": "CN-7.3.9.32",
+  "host": {
+    "packageName": "com.phoenix.read",
+    "versionName": "7.3.9.32"
+  },
+  "features": [
+    {
+      "id": "playback",
+      "title": "播放与暂停状态",
+      "contract": "playback-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "shortHolder": "t65.v",
+        "holderBaseS1": "t65.j0",
+        "shortStateMethod": "r0",
+        "shortMaskMethod": "T3",
+        "shortControlsMethod": "he",
+        "shortConfigMethod": "E4",
+        "shortLayoutResetMethod": "I4",
+        "shortLandscapeMethod": "K4",
+        "shortMaskField": "h3",
+        "shortNativeClearField": "F3",
+        "shortCleanManagerField": "E3",
+        "playbackState": "",
+        "delayedPauseRestore": true
+      },
+      "delegates": [
+        {
+          "key": "shortHolder",
+          "kind": "class",
+          "descriptor": "Lt65/v;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "holderBaseS1",
+          "kind": "class",
+          "descriptor": "Lt65/j0;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortStateMethod",
+          "kind": "method",
+          "descriptor": "Lt65/j0;->r0(Le65/f;I)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortControlsMethod",
+          "kind": "method",
+          "descriptor": "Lt65/v;->he(ZZ)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortMaskMethod",
+          "kind": "method",
+          "descriptor": "Lt65/v;->T3(Z)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortConfigMethod",
+          "kind": "method",
+          "descriptor": "Lt65/v;->E4(Landroid/content/res/Configuration;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortLayoutResetMethod",
+          "kind": "method",
+          "descriptor": "Lt65/v;->I4()V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortLandscapeMethod",
+          "kind": "method",
+          "descriptor": "Lt65/v;->K4(Z)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortMaskField",
+          "kind": "field",
+          "descriptor": "Lt65/v;->h3:Landroid/view/View;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortNativeClearField",
+          "kind": "field",
+          "descriptor": "Lt65/v;->F3:Z",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "shortCleanManagerField",
+          "kind": "field",
+          "descriptor": "Lt65/v;->E3:Le65/h;",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "playback_layout",
+      "title": "播放布局恢复",
+      "contract": "playback_layout-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "homeFragmentMaskMethod": "G1",
+        "homeFragmentMaskField": "e",
+        "seriesFragmentRefreshMethod": "he",
+        "seriesPagerGetter": "Eh",
+        "seriesHolderGetter": "V0",
+        "seriesLayoutFields": [
+          "C3",
+          "i",
+          "j",
+          "q",
+          "l",
+          "m",
+          "r",
+          "D3",
+          "E3"
+        ],
+        "fixedToolbarShowMethod": "N",
+        "customizeToolbarShowMethod": "L",
+        "customizeToolbarApplyMethod": "M",
+        "toolbarBase": ""
+      },
+      "delegates": [
+        {
+          "key": "homeFragmentMaskMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/SeriesBookMallTabFragment;->G1(Z)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "homeFragmentMaskField",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/SeriesBookMallTabFragment;->e:Landroid/view/View;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesFragmentRefreshMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->he(ZZ)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesPagerGetter",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->Eh()Lcom/dragon/read/component/shortvideo/impl/v2/view/adapter/f;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesHolderGetter",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/view/adapter/a;->V0()Lcom/dragon/read/recyler/AbsRecyclerViewHolder;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.C3",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->C3:Lcom/dragon/read/component/shortvideo/impl/view/ContainerTouchListenView;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.i",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->i:Landroid/widget/RelativeLayout;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.j",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->j:Landroidx/viewpager2/widget/ViewPager2;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.q",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->q:Lcom/dragon/read/component/shortvideo/impl/v2/ViewPager2Container;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.l",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->l:Landroid/widget/FrameLayout;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.m",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->m:Landroid/widget/FrameLayout;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.r",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->r:Landroid/widget/FrameLayout;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.D3",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->D3:Landroid/widget/FrameLayout;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "seriesLayout.E3",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/ShortSeriesSingleFragment;->E3:Landroid/view/ViewGroup;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "fixedToolbarShowMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/pages/video/layers/toolbarlayer/ToolbarLayerFixed;->N(Z)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "customizeToolbarShowMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/pages/video/customizelayers/CustomizeToolbarLayer;->L(Z)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "customizeToolbarApplyMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/pages/video/customizelayers/CustomizeToolbarLayer;->M(ZZZ)V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "精简控件与透明度",
+      "contract": "controls-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "useLegacySeedIds": false,
+        "structuralFullscreenWatch": true,
+        "progressBar": "op4.h1",
+        "hideView1": "",
+        "hideView2": "x65.e",
+        "hideIdNames": [],
+        "progressIdNames": [
+          "i47"
+        ],
+        "staticHideIds": [],
+        "staticProgressIds": [],
+        "pauseRestoreIds": [],
+        "controlTargets": {
+          "hzv": "top_tabs",
+          "hsa": "search",
+          "hr9": "menu",
+          "i3t": "favorite",
+          "cgr": "comment",
+          "fn8": "like",
+          "i1y": "share",
+          "kvu": "fullscreen",
+          "egm": "series_info",
+          "g41": "series_info",
+          "hvu": "series_info",
+          "egh": "series_info",
+          "it2": "author_declaration",
+          "g1a": "hot_comment",
+          "k00": "watching_count",
+          "f3u": "back_episode",
+          "k_4": "back_episode",
+          "koz": "playback_speed",
+          "f3v": "player_more",
+          "gxp": "danmaku_entry",
+          "ap9": "episode_selector",
+          "g9t": "fullscreen_switch",
+          "i47": "progress"
+        },
+        "clearHostNames": [
+          "hz8",
+          "hz9",
+          "j2_",
+          "apa",
+          "as3",
+          "flt",
+          "hfy"
+        ],
+        "bottomBackdropName": "as3",
+        "mainNavNames": [
+          "apa"
+        ],
+        "fullSeriesNames": [
+          "ap9"
+        ],
+        "pauseRestoreNames": []
+      },
+      "delegates": [
+        {
+          "key": "progressBar",
+          "kind": "class",
+          "descriptor": "Lop4/h1;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "hideView2",
+          "kind": "class",
+          "descriptor": "Lx65/e;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "authorDeclaration",
+          "kind": "class",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/infobottom/ShortSeriesInfoBottomView;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hzv",
+          "kind": "resource",
+          "descriptor": "id/hzv",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hsa",
+          "kind": "resource",
+          "descriptor": "id/hsa",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hr9",
+          "kind": "resource",
+          "descriptor": "id/hr9",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.i3t",
+          "kind": "resource",
+          "descriptor": "id/i3t",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.cgr",
+          "kind": "resource",
+          "descriptor": "id/cgr",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.fn8",
+          "kind": "resource",
+          "descriptor": "id/fn8",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.i1y",
+          "kind": "resource",
+          "descriptor": "id/i1y",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.kvu",
+          "kind": "resource",
+          "descriptor": "id/kvu",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.egm",
+          "kind": "resource",
+          "descriptor": "id/egm",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.g41",
+          "kind": "resource",
+          "descriptor": "id/g41",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hvu",
+          "kind": "resource",
+          "descriptor": "id/hvu",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.egh",
+          "kind": "resource",
+          "descriptor": "id/egh",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.it2",
+          "kind": "resource",
+          "descriptor": "id/it2",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.g1a",
+          "kind": "resource",
+          "descriptor": "id/g1a",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.k00",
+          "kind": "resource",
+          "descriptor": "id/k00",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.f3u",
+          "kind": "resource",
+          "descriptor": "id/f3u",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.k_4",
+          "kind": "resource",
+          "descriptor": "id/k_4",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.koz",
+          "kind": "resource",
+          "descriptor": "id/koz",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.f3v",
+          "kind": "resource",
+          "descriptor": "id/f3v",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.gxp",
+          "kind": "resource",
+          "descriptor": "id/gxp",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.ap9",
+          "kind": "resource",
+          "descriptor": "id/ap9",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.g9t",
+          "kind": "resource",
+          "descriptor": "id/g9t",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.i47",
+          "kind": "resource",
+          "descriptor": "id/i47",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hz8",
+          "kind": "resource",
+          "descriptor": "id/hz8",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hz9",
+          "kind": "resource",
+          "descriptor": "id/hz9",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.j2_",
+          "kind": "resource",
+          "descriptor": "id/j2_",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.apa",
+          "kind": "resource",
+          "descriptor": "id/apa",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.as3",
+          "kind": "resource",
+          "descriptor": "id/as3",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.flt",
+          "kind": "resource",
+          "descriptor": "id/flt",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.hfy",
+          "kind": "resource",
+          "descriptor": "id/hfy",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "quality",
+      "title": "默认画质",
+      "contract": "quality-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "resolutionController": "e65.w",
+        "resolutionModelMethods": [
+          "f",
+          "i"
+        ],
+        "resolutionEngineField": "h",
+        "resolutionApplyMethod": "r"
+      },
+      "delegates": [
+        {
+          "key": "resolutionController",
+          "kind": "class",
+          "descriptor": "Le65/w;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resolutionEngineField",
+          "kind": "field",
+          "descriptor": "Le65/w;->h:Lcom/ss/ttvideoengine/TTVideoEngine;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resolutionApplyMethod",
+          "kind": "method",
+          "descriptor": "Le65/w;->r(Lcom/ss/ttvideoengine/Resolution;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resolutionModel.f",
+          "kind": "method",
+          "descriptor": "Le65/w;->f(Lcom/ss/ttvideoengine/model/VideoModel;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resolutionModel.i",
+          "kind": "method",
+          "descriptor": "Le65/w;->i(Lcom/ss/ttvideoengine/model/VideoModel;JLjava/lang/String;Lcom/dragon/read/component/shortvideo/data/saas/video/SaasVideoData;)V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "speed",
+      "title": "默认倍速",
+      "contract": "speed-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "speedPlayerClass": "e65.w",
+        "speedControllerClass": "com.dragon.read.component.shortvideo.impl.v2.view.adapter.a",
+        "speedSetMethod": "K4",
+        "speedCacheMethod": "H1"
+      },
+      "delegates": [
+        {
+          "key": "setPlaySpeed",
+          "kind": "method",
+          "descriptor": "Le65/w;->setPlaySpeed(I)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "speedSetMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/view/adapter/a;->K4(ZFZ)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "speedCacheMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/view/adapter/a;->H1(Ljava/lang/String;)F",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "getCurrentPlaySpeed",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/v2/view/adapter/a;->getCurrentPlaySpeed()I",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "autoPlaySpeed",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/autoplay/o;->setSpeed(F)V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "comments",
+      "title": "双击评论",
+      "contract": "comments-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "doubleTapHandlers": [
+          "r65.o0",
+          "wp4.e",
+          "com.dragon.read.component.shortvideo.impl.fullscreen.i$d"
+        ],
+        "rightViewAgency": "com.dragon.read.component.shortvideo.impl.inject.view.f7",
+        "rightViewAgencyEventMethod": "s",
+        "doubleTapLikeView": "wp4.e",
+        "doubleTapLikeMethod": "b",
+        "doubleTapHolderLikeMethod": "z4"
+      },
+      "delegates": [
+        {
+          "key": "rightViewAgency",
+          "kind": "class",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/inject/view/f7;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "rightView",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/inject/view/f7;->p:Lcom/dragon/read/component/shortvideo/impl/rightview/ShortSeriesRightView;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "rightViewAgencyEventMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/inject/view/f7;->s(Landroid/os/Bundle;Ljava/lang/String;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "handler.0",
+          "kind": "class",
+          "descriptor": "Lr65/o0;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "handler.1",
+          "kind": "class",
+          "descriptor": "Lwp4/e;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "handler.2",
+          "kind": "class",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/fullscreen/i$d;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "onDoubleTap.0",
+          "kind": "method",
+          "descriptor": "Lr65/o0;->onDoubleTap(Landroid/view/MotionEvent;)Z",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "onDoubleTap.1",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/fullscreen/i$d;->onDoubleTap(Landroid/view/MotionEvent;)Z",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "doubleTapLikeMethod",
+          "kind": "method",
+          "descriptor": "Lwp4/e;->b(Lkotlin/Pair;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "doubleTapHolderLikeMethod",
+          "kind": "method",
+          "descriptor": "Lt65/v;->z4()V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "红果设置入口",
+      "contract": "settings-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "settingsListMethods": [
+          "s1",
+          "t1"
+        ],
+        "settingsItemClass": "gc6.e",
+        "settingsClickClass": "gc6.b",
+        "settingsStyle": "grouped-atomic-arrow"
+      },
+      "delegates": [
+        {
+          "key": "settingsList.s1",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/biz/impl/mine/settings/SettingsActivity;->s1(Lcom/dragon/read/recyler/c;)Ljava/util/List;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "settingsList.t1",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/biz/impl/mine/settings/SettingsActivity;->t1(Lcom/dragon/read/recyler/c;)Ljava/util/List;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "itemConstructor",
+          "kind": "method",
+          "descriptor": "Lgc6/e;-><init>()V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "itemTitle",
+          "kind": "field",
+          "descriptor": "Lgc6/e;->e:Ljava/lang/CharSequence;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "itemClick",
+          "kind": "method",
+          "descriptor": "Lgc6/b;->onClick(Landroid/view/View;)V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "drawer",
+      "title": "长按播放抽屉",
+      "contract": "drawer-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "nativeDrawer": true,
+        "drawerActionClass": "com.dragon.read.component.shortvideo.impl.moredialog.action.a",
+        "drawerTitleMethod": "g",
+        "drawerProviderField": "k",
+        "drawerClickMethod": "d",
+        "drawerBindMethods": [
+          "onBind",
+          "s2"
+        ],
+        "drawerTitleResource": "action_text"
+      },
+      "delegates": [
+        {
+          "key": "drawerProviderField",
+          "kind": "field",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/moredialog/action/a;->k:Lgq4/d;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "drawerConstructor",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/moredialog/action/a;-><init>(Lgq4/d;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "drawerTitleMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/moredialog/action/a;->g(Ljava/lang/String;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "drawerClickMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/moredialog/action/a;->d(Landroid/view/View;)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "drawerBind.onBind",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/moredialog/ShortSeriesMorePanelDialogV2$b;->onBind(Ljava/lang/Object;I)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "drawerBind.s2",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/moredialog/ShortSeriesMorePanelDialogV2$b;->s2(Lcom/dragon/read/component/shortvideo/impl/moredialog/action/o;I)V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "resource.action_text",
+          "kind": "resource",
+          "descriptor": "id/action_text",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "ads",
+      "title": "播放广告入口",
+      "contract": "ads-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "adVideoEndShowMethod": "E",
+        "pauseAdEntryClass": "com.dragon.read.component.shortvideo.impl.inject.view.s4",
+        "pauseAdEntryMethod": "b"
+      },
+      "delegates": [
+        {
+          "key": "adVideoEndShowMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/pages/video/layers/advideoendlayer/AdVideoEndLayer;->E()V",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "pauseAdEntryMethod",
+          "kind": "method",
+          "descriptor": "Lcom/dragon/read/component/shortvideo/impl/inject/view/s4;->b(Landroid/view/View;Z)V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "brightness",
+      "title": "OLED保护映射",
+      "contract": "brightness-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "oledBright": "dd3.h",
+        "oledBrightAction": "fd3.a"
+      },
+      "delegates": [
+        {
+          "key": "oledBrightAction",
+          "kind": "class",
+          "descriptor": "Lfd3/a;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "oledBright",
+          "kind": "method",
+          "descriptor": "Ldd3/h;->a(Ljava/util/List;)V",
+          "status": "SUCCESS"
+        }
+      ]
+    },
+    {
+      "id": "membership",
+      "title": "会员模型映射",
+      "contract": "membership-v1",
+      "outcome": "PASS",
+      "mappings": {
+        "kmpAcctService": [
+          "yg3.l"
+        ],
+        "kmpVipModel": "l36.k"
+      },
+      "delegates": [
+        {
+          "key": "kmpVipModel",
+          "kind": "class",
+          "descriptor": "Ll36/k;",
+          "status": "SUCCESS"
+        },
+        {
+          "key": "getVipInfo.0",
+          "kind": "method",
+          "descriptor": "Lyg3/l;->getVipInfo()Ll36/k;",
+          "status": "SUCCESS"
+        }
+      ]
+    }
+  ]
+}

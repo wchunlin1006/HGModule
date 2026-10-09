@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="app_bg">#FF0F1114</color>
+    <color name="surface">#FF191C20</color>
+    <color name="surface_muted">#FF22262C</color>
+    <color name="text_primary">#FFF5F7FA</color>
+    <color name="text_secondary">#FFA7AFBA</color>
+    <color name="accent">#FFFF6B4A</color>
+    <color name="accent_pressed">#FFFF8065</color>
+    <color name="accent_soft">#FF33231F</color>
+    <color name="success">#FF47C78A</color>
+    <color name="divider">#1FFFFFFF</color>
+    <color name="button_secondary">#FF252A31</color>
+    <color name="border">#26FFFFFF</color>
+</resources>

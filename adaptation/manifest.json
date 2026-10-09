@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "hookContract": "guoplus-hooks-v1",
+  "profiles": [
+    {
+      "file": "CN-7.3.2.32.json",
+      "packageName": "com.phoenix.read",
+      "versionName": "7.3.2.32",
+      "versionCode": 73232,
+      "revision": 2,
+      "sha256": "8b880970d9a4a29312f30121339fa80feb917f7d86808728bd989fc11c420126"
+    },
+    {
+      "file": "CN-7.3.9.32.json",
+      "packageName": "com.phoenix.read",
+      "versionName": "7.3.9.32",
+      "versionCode": 73932,
+      "revision": 2,
+      "sha256": "10c092d4104248aa6d5757f80ca788cb4132f95dec339e5e484bbac4da78516a"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+}
+
+android {
+    namespace 'com.hmodule'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.hmodule'
+        minSdk 29
+        targetSdk 34
+        versionCode 20260811
+        versionName "1.0.1"
+        buildConfigField 'long', 'BUILD_TIME_MS', "${System.currentTimeMillis()}L"
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+
+        resConfigs("zh", "en")
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    sourceSets.main.assets.srcDir(layout.buildDirectory.dir('generated/adaptation-assets'))
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+        }
+    }
+
+    def keystoreProps = new Properties()
+    def keystorePropsFile = rootProject.file('keystore.properties')
+    if (keystorePropsFile.exists()) {
+        keystorePropsFile.withInputStream { keystoreProps.load(it) }
+    }
+    def hasSigning = keystorePropsFile.exists() &&
+        !keystoreProps.getProperty('storeFile', '').isBlank() &&
+        !keystoreProps.getProperty('storePassword', '').isBlank() && keystoreProps.getProperty('storePassword', '') != 'FILL_ME' &&
+        !keystoreProps.getProperty('keyAlias', '').isBlank() &&
+        !keystoreProps.getProperty('keyPassword', '').isBlank() && keystoreProps.getProperty('keyPassword', '') != 'FILL_ME'
+    signingConfigs {
+        if (hasSigning) {
+            release {
+                storeFile file(keystoreProps.getProperty('storeFile'))
+                storePassword keystoreProps.getProperty('storePassword')
+                keyAlias keystoreProps.getProperty('keyAlias')
+                keyPassword keystoreProps.getProperty('keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            if (hasSigning) signingConfig signingConfigs.release
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasSigning) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    packaging {
+        resources {
+            merges += ['META-INF/xposed/*']
+            excludes += ['**']
+        }
+    }
+}
+
+dependencies {
+    implementation 'io.github.libxposed:service:101.0.0'
+    compileOnly libs.libxposed.api
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}
+
+// The same repository profiles are bundled for offline startup and served by GitHub.
+tasks.register('syncAdaptationAssets', Sync) {
+    from(rootProject.file('adaptation'))
+    into(layout.buildDirectory.dir('generated/adaptation-assets/adaptation'))
+}
+tasks.named('preBuild').configure { dependsOn('syncAdaptationAssets') }
