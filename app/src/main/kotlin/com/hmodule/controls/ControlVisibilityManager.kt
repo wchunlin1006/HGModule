@@ -53,6 +53,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
     var resourceOverrides: Map<String, String> = emptyMap()
     var clearHostNames: Set<String> = emptySet()
     var bottomBackdropName: String = ""
+    var mainNavNames: Set<String> = emptySet()
     private var applying = false
     private var lastKeepDanmaku: Boolean? = null
 
@@ -97,9 +98,9 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
 
     fun requestedVisibility(view: View, requested: Int): Int {
         if (applying) return requested
-        backdrops[view]?.let { it.visibility = requested; return View.VISIBLE }
+        backdrops[view]?.let { it.visibility = requested; return if (policy.clearsAll) View.GONE else View.VISIBLE }
         if (view in infoHosts) { infoHosts[view] = requested; return View.GONE }
-        if (view in clearHosts) { clearHosts[view] = requested; return View.INVISIBLE }
+        if (view in clearHosts) { clearHosts[view] = requested; return clearedVisibility(view) }
         if (view in interactionHosts) { interactionHosts[view] = requested; return View.INVISIBLE }
         pauseParents[view]?.let { it.visibility = requested; return View.VISIBLE }
         val state = controls[view] ?: return requested
@@ -462,7 +463,9 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         }
         if (entryName(view) == "bottom_tab_mask" || bottomBackdropName.isNotBlank() && entryName(view) == bottomBackdropName || profileId == "CN-7.3.2.32" && entryName(view) == "ar8") {
             backdrops.getOrPut(view) { BackdropState(view.background, view.visibility, view.alpha) }
-            mutate { view.visibility = View.VISIBLE; view.alpha = 1f }
+            // Full clear must not leave a reserve: GONE collapses the layout slot so
+            // the video viewport can take the whole screen; the state is restored on exit.
+            mutate { if (view.visibility != View.GONE) view.visibility = View.GONE }
             return
         }
         if (isPlaybackOverlay(view) && !containsVideoSurface(view)) {
@@ -475,19 +478,35 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
                         child.visibility == View.GONE -> Unit
                         isDanmakuRenderer(child) -> Unit
                         containsPreservedDanmaku(child) -> hideAllExceptDanmaku(child)
-                        else -> {
-                            if (child !in clearHosts) clearHosts[child] = child.visibility
-                            mutate { child.visibility = View.INVISIBLE }
-                        }
+                        else -> hideClearHost(child)
                     }
                 }
                 return
             }
-            if (view !in clearHosts) clearHosts[view] = view.visibility
-            mutate { view.visibility = View.INVISIBLE }
+            hideClearHost(view)
             return
         }
         if (view is ViewGroup) for (i in 0 until view.childCount) hideClearHosts(view.getChildAt(i))
+    }
+
+    /** Bottom bar/backdrop use GONE so the freed slot is given back to the video viewport. */
+    private fun hideClearHost(view: View) {
+        if (view in clearHosts) {
+            if (view.visibility != clearedVisibility(view)) mutate { view.visibility = clearedVisibility(view) }
+            return
+        }
+        clearHosts[view] = view.visibility
+        mutate { view.visibility = clearedVisibility(view) }
+    }
+
+    private fun clearedVisibility(view: View): Int = if (isBottomChrome(view)) View.GONE else View.INVISIBLE
+
+    private fun isBottomChrome(view: View): Boolean {
+        val name = entryName(view)
+        if (view.javaClass.name == "com.dragon.read.widget.BottomTabFrameLayout") return true
+        if (name == "bottom_bar_layout" || name == "bottom_tab_mask") return true
+        if (name in mainNavNames) return true
+        return bottomBackdropName.isNotBlank() && name == bottomBackdropName
     }
 
     private fun containsPreservedDanmaku(view: View, depth: Int = 0): Boolean {

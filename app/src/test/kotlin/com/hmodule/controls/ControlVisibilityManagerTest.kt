@@ -174,7 +174,7 @@ class ControlVisibilityManagerTest {
         assertEquals(View.VISIBLE, selected.visibility)
     }
 
-    @Test fun jsonClearHostsRestoreAndConfiguredBackdropKeepsMatchingColour() {
+    @Test fun jsonClearHostsRestoreAndConfiguredBackdropHidesDuringClear() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val root = FrameLayout(activity)
         val host = FrameLayout(activity).apply { id = android.R.id.content }
@@ -187,11 +187,12 @@ class ControlVisibilityManagerTest {
         manager.policy = ControlPolicy(masterEnabled = true, fullClearEnabled = true)
         manager.sync(root)
         assertEquals(View.INVISIBLE, host.visibility)
-        assertEquals(View.VISIBLE, backdrop.visibility)
+        assertEquals(View.GONE, backdrop.visibility)
         assertNull(backdrop.background)
         manager.policy = manager.policy.copy(fullClearEnabled = false)
         manager.sync(root)
         assertEquals(View.VISIBLE, host.visibility)
+        assertEquals(View.VISIBLE, backdrop.visibility)
         assertNull(backdrop.background)
     }
 
@@ -428,7 +429,7 @@ class ControlVisibilityManagerTest {
         assertTrue(views.all { it.visibility == View.VISIBLE })
     }
 
-    @Test fun clearScreenMatchesBottomBackdropAndWindowColorThenRestoresTheirNativeState() {
+    @Test fun clearScreenHidesBottomBackdropThenRestoresTheirNativeState() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         @Suppress("DEPRECATION")
         val namedResources = object : android.content.res.Resources(activity.assets,
@@ -449,10 +450,10 @@ class ControlVisibilityManagerTest {
         manager.policy = active
         manager.sync(root)
         manager.syncWindow(activity.window)
-        assertEquals(View.VISIBLE, backdrop.visibility)
+        assertEquals(View.GONE, backdrop.visibility)
         assertEquals(android.graphics.Color.DKGRAY, (backdrop.background as android.graphics.drawable.ColorDrawable).color)
         assertEquals(android.graphics.Color.DKGRAY, activity.window.navigationBarColor)
-        assertEquals(View.INVISIBLE, nav.visibility)
+        assertEquals(View.GONE, nav.visibility)
         assertEquals(View.VISIBLE, video.visibility)
         manager.policy = active.copy(paused = true)
         manager.sync(root)
@@ -462,9 +463,9 @@ class ControlVisibilityManagerTest {
         assertEquals(android.graphics.Color.DKGRAY, activity.window.navigationBarColor)
         manager.policy = active
         manager.sync(root)
-        assertEquals(View.VISIBLE, backdrop.visibility)
+        assertEquals(View.GONE, backdrop.visibility)
         assertEquals(1f, manager.requestedAlpha(backdrop, 0.6f), 0f)
-        assertEquals(View.VISIBLE, manager.requestedVisibility(backdrop, View.GONE))
+        assertEquals(View.GONE, manager.requestedVisibility(backdrop, View.GONE))
         manager.policy = active.copy(fullClearEnabled = false)
         manager.sync(root)
         assertEquals(View.GONE, backdrop.visibility)

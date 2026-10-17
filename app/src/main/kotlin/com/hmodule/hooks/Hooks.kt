@@ -109,10 +109,13 @@ object Hooks {
         controlVisibility.resourceOverrides = gNames.controlTargets
         controlVisibility.clearHostNames = gNames.clearHostNames.toSet()
         controlVisibility.bottomBackdropName = gNames.bottomBackdropName
+        controlVisibility.mainNavNames = gNames.mainNavNames.toSet()
         if (!controlEffectsActive()) {
             gPlayerPageActive = false
             restorePauseForcedViews()
             controlVisibility.restoreAll()
+            restoreFeedViewportBottomMargins(clear = true)
+            restoreBottomLayoutReclaim()
             syncStatusBar(gCurrentActivity)
             return
         }
@@ -122,6 +125,8 @@ object Hooks {
             controlVisibility.policy = controlPolicy().copy(masterEnabled = false)
             restorePauseForcedViews()
             controlVisibility.restoreAll()
+            restoreFeedViewportBottomMargins(clear = true)
+            restoreBottomLayoutReclaim()
             syncStatusBar(gCurrentActivity)
             return
         }
@@ -139,6 +144,12 @@ object Hooks {
         bindProgress(root)
         controlVisibility.sync(root)
         gCurrentActivity?.window?.let(controlVisibility::syncWindow)
+        if (controlVisibility.policy.clearsAll) {
+            reclaimFeedViewportBottomMargin(root)
+        } else {
+            restoreFeedViewportBottomMargins(clear = true)
+            restoreBottomLayoutReclaim()
+        }
     }
 
     private val topSwipe = com.hmodule.controls.TopSwipeInterceptor()
@@ -877,7 +888,70 @@ object Hooks {
     }
 
     private fun reclaimFeedViewportBottomMargin(root: View?) {
-        // Keep the native navigation host visible; only selected tabs are hidden.
+        if (!gMasterOn || !gControlOn || pauseRestoresControls()) return
+        val decor = gCurrentActivity?.window?.decorView
+        val viewport = findFeedViewport(root) ?: findFeedViewport(decor) ?: return
+        try {
+            val lp = viewport.layoutParams
+            val mlp = lp as? ViewGroup.MarginLayoutParams
+            if (mlp != null && mlp.bottomMargin > 0) {
+                val native = mlp.bottomMargin
+                synchronized(gFeedViewportNativeBottomMargins) {
+                    if (!gFeedViewportNativeBottomMargins.containsKey(viewport)) {
+                        gFeedViewportNativeBottomMargins[viewport] = native
+                    }
+                }
+                mlp.bottomMargin = 0
+                viewport.layoutParams = mlp
+                viewport.requestLayout()
+                LogUtil.info("视频视口底部边距已回收 | ${viewport.javaClass.name} ${native}px -> 0")
+                LogUtil.incr("feedViewportMarginReclaim")
+            }
+            var node: View? = viewport.parent as? View
+            var depth = 0
+            while (node != null && depth++ < 8) {
+                reclaimViewBottomReserve(node)
+                node = node.parent as? View
+            }
+            (viewport.parent as? View)?.requestLayout()
+        } catch (t: Throwable) {
+            LogUtil.warn("reclaim feed viewport bottom margin failed: ${t.message}")
+        }
+    }
+
+    /** Zeroes the bottom reserve a host container keeps for the navigation bar. */
+    private fun reclaimViewBottomReserve(v: View) {
+        try {
+            val lp = v.layoutParams ?: return
+            val mlp = lp as? ViewGroup.MarginLayoutParams
+            val paddingBottom = v.paddingBottom
+            val bottomMargin = mlp?.bottomMargin ?: 0
+            val bottomToTop = reflectIntField(lp, "bottomToTop")
+            var changed = false
+            if (bottomMargin > 0) {
+                rememberBottomLayoutState(v)
+                mlp!!.bottomMargin = 0
+                changed = true
+            }
+            if (paddingBottom > 0) {
+                rememberBottomLayoutState(v)
+                v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, 0)
+                changed = true
+            }
+            if (bottomToTop != null && bottomToTop > 0) {
+                rememberBottomLayoutState(v)
+                setReflectIntField(lp, "bottomToTop", -1)
+                setReflectIntField(lp, "bottomToBottom", 0)
+                setReflectIntField(lp, "goneBottomMargin", 0)
+                changed = true
+            }
+            if (changed) {
+                v.layoutParams = lp
+                v.requestLayout()
+                LogUtil.info("底部占位已回收 | ${v.javaClass.name} id=${viewEntryName(v)} margin=$bottomMargin pad=$paddingBottom")
+                LogUtil.incr("bottomReserveReclaim")
+            }
+        } catch (_: Throwable) {}
     }
 
     private fun enforceKnownFeedViewportBottomMargin() {
