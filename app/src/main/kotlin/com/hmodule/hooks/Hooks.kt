@@ -30,6 +30,7 @@ import com.hmodule.MainHook
 import com.hmodule.BuildConfig
 import com.hmodule.UpdateChecker
 import com.hmodule.controls.DefaultQuality
+import com.hmodule.controls.QualitySwitchGate
 import com.hmodule.controls.ControlPolicy
 import com.hmodule.controls.ControlTarget
 import com.hmodule.controls.ControlSettings
@@ -161,6 +162,7 @@ object Hooks {
     private var gVipOn = false
     private var gVipIconOn = false
     private var gDefaultQualityOn = false
+    private val gQualitySwitchGate = QualitySwitchGate()
 
     private var gDefaultSpeedOn = false
     private var gDefaultSpeed = 1.0f
@@ -2455,15 +2457,35 @@ object Hooks {
     private fun selectedResolution(supported: List<Any>): Any? =
         (controlSettings?.defaultQuality() ?: DefaultQuality.HIGHEST).select(supported, ::resolutionRank)
 
-    private fun applyResolutionToEngine(engine: Any, resolution: Any) {
-        try {
+    private fun applyResolutionToEngine(engine: Any, resolution: Any): Boolean {
+        return try {
             val method = engine.javaClass.methods.firstOrNull {
                 it.name == "configResolution" && it.parameterCount == 1 &&
                     it.parameterTypes[0].isInstance(resolution)
-            } ?: return
+            } ?: return false
             method.invoke(engine, resolution)
             LogUtil.incr("defaultQualityApply")
-        } catch (e: Throwable) { LogUtil.warn("默认画质：应用失败: $e") }
+            true
+        } catch (e: Throwable) {
+            LogUtil.warn("默认画质：应用失败: $e")
+            false
+        }
+    }
+
+    /**
+     * Switches the preferred resolution only once per host process: the app keeps the switched
+     * resolution until it is closed, and repeating the switch only repeats its quality hint.
+     */
+    private fun applyQualityOncePerProcess(resolution: Any?, apply: (Any) -> Boolean) {
+        val target = resolution ?: return
+        if (!gQualitySwitchGate.shouldApply(target)) {
+            LogUtil.incr("defaultQualitySkip")
+            LogUtil.debug("默认画质：本进程已切换到 $target，跳过重复切换")
+            return
+        }
+        if (!apply(target)) return
+        gQualitySwitchGate.markApplied(target)
+        LogUtil.info("默认画质：本进程首次切换到 $target")
     }
 
     private fun applyResolutionViaController(controller: Any?, resolution: Any?): Boolean {
@@ -2491,10 +2513,20 @@ object Hooks {
 
     private fun applyDefaultQualityToKnownPlayers() {
         if (!gMasterOn || !gDefaultQualityOn) return
+        // The preferred quality changed (or the feature was re-enabled): allow exactly one more switch.
+        gQualitySwitchGate.reset()
+        var applied: Any? = null
         val controllers = synchronized(gControllerResolutions) { gControllerResolutions.entries.map { it.key to it.value } }
-        for ((controller, supported) in controllers) applyResolutionViaController(controller, selectedResolution(supported))
+        for ((controller, supported) in controllers) {
+            val target = selectedResolution(supported) ?: continue
+            if (applyResolutionViaController(controller, target)) applied = target
+        }
         val engines = synchronized(gEngineResolutions) { gEngineResolutions.entries.map { it.key to it.value } }
-        for ((engine, supported) in engines) selectedResolution(supported)?.let { applyResolutionToEngine(engine, it) }
+        for ((engine, supported) in engines) {
+            val target = selectedResolution(supported) ?: continue
+            if (applyResolutionToEngine(engine, target)) applied = target
+        }
+        gQualitySwitchGate.markApplied(applied)
     }
 
     // Runs in the host process: check its permission below, rather than the module manifest.
@@ -3464,14 +3496,17 @@ object Hooks {
                         }
                         val result = chain.proceed()
                         try {
+                            val target = selectedResolution(supported)
                             if (gNames.resolutionApplyMethod.isBlank()) {
                                 val engine = if (controller != null) engineField.get(controller) else null
                                 if (engine != null) {
                                     gEngineResolutions[engine] = supported
-                                    if (gMasterOn && gDefaultQualityOn) selectedResolution(supported)?.let { applyResolutionToEngine(engine, it) }
+                                    if (gMasterOn && gDefaultQualityOn) {
+                                        applyQualityOncePerProcess(target) { applyResolutionToEngine(engine, it) }
+                                    }
                                 }
                             } else if (gMasterOn && gDefaultQualityOn) {
-                                applyResolutionViaController(controller, selectedResolution(supported))
+                                applyQualityOncePerProcess(target) { applyResolutionViaController(controller, it) }
                             }
                         } catch (e: Throwable) { LogUtil.warn("默认画质：应用失败: $e") }
                         result
