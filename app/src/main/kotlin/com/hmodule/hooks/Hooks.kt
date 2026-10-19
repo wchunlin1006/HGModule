@@ -1220,7 +1220,9 @@ object Hooks {
         }
     }
 
-    private val mainBottomNavLabels = setOf("首页", "剧场", "商城", "赚钱", "我的")
+    // 7.3.9.x renamed the earn tab to 福利; keep both so the label hit count stays
+    // at full strength on either build.
+    private val mainBottomNavLabels = setOf("首页", "剧场", "商城", "赚钱", "福利", "我的")
 
     private fun isMainBottomNavContainer(v: View?): Boolean {
         if (gPkg != TargetNames.CN_PACKAGE || v !is ViewGroup || !isInsideCurrentActivityDecor(v)) return false

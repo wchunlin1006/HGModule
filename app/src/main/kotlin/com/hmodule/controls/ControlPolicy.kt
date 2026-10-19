@@ -27,7 +27,7 @@ enum class ControlTarget(val key: String, val title: String, val section: String
     HOME("home", "首页标签", "底部导航"),
     THEATER("theater", "剧场标签", "底部导航"),
     MALL("mall", "商城标签", "底部导航"),
-    EARN("earn", "赚钱标签", "底部导航"),
+    EARN("earn", "赚钱/福利标签", "底部导航"),
     PROFILE("profile", "我的标签", "底部导航");
 
     val preferenceKey: String get() = "guoplus_hide_$key"

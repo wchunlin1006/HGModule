@@ -883,6 +883,74 @@ class ControlVisibilityManagerTest {
         assertTrue(tabs.all { (it.layoutParams as LinearLayout.LayoutParams).weight == 0f })
     }
 
+    @Test fun renamedEarnTabLabelIsIdentifiedAndReweightedLikeTheOldOne() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        for (earnLabel in listOf("赚钱", "福利")) {
+            val root = FrameLayout(activity)
+            val nav = com.dragon.read.widget.BottomTabFrameLayout(activity)
+            val slots = LinearLayout(activity)
+            root.addView(nav); nav.addView(slots)
+            val tabs = listOf("首页", "剧场", "商城", earnLabel, "我的").map { label ->
+                TextView(activity).apply { text = label; slots.addView(this, LinearLayout.LayoutParams(80, 50)) }
+            }
+            val manager = ControlVisibilityManager { it() }
+            manager.policy = ControlPolicy(true, true, setOf(ControlTarget.EARN))
+            manager.sync(root)
+            assertEquals(earnLabel, View.GONE, tabs[3].visibility)
+            assertTrue(earnLabel, listOf(0, 1, 2, 4).all { tabs[it].visibility == View.VISIBLE })
+            assertTrue(earnLabel, listOf(0, 1, 2, 4).all {
+                (tabs[it].layoutParams as LinearLayout.LayoutParams).weight == 1f
+            })
+            manager.policy = manager.policy.copy(hideEnabled = false)
+            manager.sync(root)
+            assertTrue(earnLabel, tabs.all { it.visibility == View.VISIBLE && it.layoutParams.width == 80 })
+            manager.restoreAll()
+        }
+    }
+
+    @Test fun animeDiscoveryCapsuleInTheTopBandIsChannelChromeAndClearsWithTheScreen() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val dm = activity.resources.displayMetrics
+        val root = FrameLayout(activity)
+        val header = FrameLayout(activity)
+        val capsule = LinearLayout(activity).apply { isClickable = true }
+        val label = TextView(activity).apply { text = "发现漫剧" }
+        capsule.addView(label)
+        header.addView(capsule, FrameLayout.LayoutParams((dm.widthPixels * 0.24f).toInt(),
+            (dm.heightPixels * 0.035f).toInt()).apply {
+            leftMargin = (dm.widthPixels * 0.38f).toInt()
+            topMargin = (dm.heightPixels * 0.06f).toInt()
+        })
+        root.addView(header, FrameLayout.LayoutParams(dm.widthPixels, (dm.heightPixels * 0.2f).toInt()))
+        // Same words mid-screen (a title or subtitle) must not be mistaken for the capsule.
+        val midScreen = TextView(activity).apply { text = "发现漫剧新大陆" }
+        root.addView(midScreen, FrameLayout.LayoutParams(dm.widthPixels,
+            (dm.heightPixels * 0.04f).toInt()).apply { topMargin = (dm.heightPixels * 0.55f).toInt() })
+        activity.setContentView(root)
+        fun layout() {
+            root.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(dm.heightPixels, View.MeasureSpec.EXACTLY))
+            root.layout(0, 0, dm.widthPixels, dm.heightPixels)
+        }
+        layout()
+        val manager = ControlVisibilityManager { it() }
+        manager.policy = ControlPolicy(true, true, setOf(ControlTarget.TOP_TABS))
+        manager.sync(root)
+        assertEquals(View.INVISIBLE, capsule.visibility)
+        assertFalse(label.isShown)
+        assertEquals(View.VISIBLE, midScreen.visibility)
+        manager.policy = manager.policy.copy(hideEnabled = false)
+        manager.sync(root)
+        assertEquals(View.VISIBLE, capsule.visibility)
+        assertTrue(label.isShown)
+        // Clean screen hides it even with nothing selected in the per-control list.
+        manager.policy = manager.policy.copy(hideEnabled = true, selected = emptySet(), fullClearEnabled = true)
+        manager.sync(root)
+        assertEquals(View.INVISIBLE, capsule.visibility)
+        manager.restoreAll()
+        assertEquals(View.VISIBLE, capsule.visibility)
+    }
+
     @Test fun targetAppVisibilityRequestSurvivesHidePauseResumeAndExit() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val root = LinearLayout(activity)

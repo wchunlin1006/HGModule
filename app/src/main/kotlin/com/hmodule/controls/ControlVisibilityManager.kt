@@ -707,15 +707,9 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         if (text.isEmpty()) return null
         // Counts can be filled after their containing information panel is already hidden.
         if (WATCHING_COUNT_TEXT.matches(text)) return ControlTarget.WATCHING_COUNT
-        if (insideBottomNav(view)) return when (text) {
-            "首页" -> ControlTarget.HOME
-            "剧场", "短剧" -> ControlTarget.THEATER
-            "商城" -> ControlTarget.MALL
-            "赚钱" -> ControlTarget.EARN
-            "我的" -> ControlTarget.PROFILE
-            else -> null
-        }
-        val positionCandidate = text in TOP_TAB_LABELS || text in POSITION_LABELS ||
+        if (insideBottomNav(view)) return BOTTOM_NAV_TARGETS[text]
+        val topEntry = TOP_ENTRY_LABEL_PREFIXES.any { text.startsWith(it) }
+        val positionCandidate = topEntry || text in TOP_TAB_LABELS || text in POSITION_LABELS ||
             INTERACTION_LABEL_PREFIXES.any { text.startsWith(it) }
         if (!positionCandidate) return null
         val rect = Rect()
@@ -724,6 +718,10 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         val right = rect.centerX() > dm.widthPixels * 0.68f
         val top = rect.centerY() < dm.heightPixels * 0.22f
         return when {
+            // The 漫剧 channel floats this discovery capsule over the player. It carries no
+            // stable id in the version profiles, so match its label inside the top band and
+            // treat it as channel chrome: clean screen hides it, 频道标签 also hides it.
+            top && topEntry -> ControlTarget.TOP_TABS
             top && text in TOP_TAB_LABELS && hasTopTabSiblings(view) -> ControlTarget.TOP_TABS
             right && (text == "收藏" || text.startsWith("收藏，") || text.startsWith("收藏,")) -> ControlTarget.FAVORITE
             right && (text == "评论" || text.startsWith("评论，") || text.startsWith("评论,")) -> ControlTarget.COMMENT
@@ -881,8 +879,25 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
 
     companion object {
         const val MODULE_UI_TAG = "GUOPLUS_MODULE_UI"
-        private val NAV_LABELS = setOf("首页", "剧场", "商城", "赚钱", "我的", "短剧", "福利")
+        // One table drives both tab identification and slot counting: a renamed tab
+        // used to be known to hasNavLabel() while identify() returned null for it,
+        // so the checkbox silently stopped hiding it.
+        private val BOTTOM_NAV_TARGETS = mapOf(
+            "首页" to ControlTarget.HOME,
+            "剧场" to ControlTarget.THEATER,
+            // 短剧 is the label some builds use for the same theater slot.
+            "短剧" to ControlTarget.THEATER,
+            "商城" to ControlTarget.MALL,
+            "赚钱" to ControlTarget.EARN,
+            // 7.3.9.x and later renamed the earn tab to 福利.
+            "福利" to ControlTarget.EARN,
+            "我的" to ControlTarget.PROFILE,
+        )
+        private val NAV_LABELS = BOTTOM_NAV_TARGETS.keys
         private val TOP_TAB_LABELS = setOf("推荐", "关注", "精选", "短剧", "漫剧", "真人剧", "剧场")
+        // Floating channel entries that live in the top band but are not tabs. The 漫剧
+        // discovery capsule only appears while the 漫剧 tab is selected and has no id.
+        private val TOP_ENTRY_LABEL_PREFIXES = listOf("发现漫剧")
         private val POSITION_LABELS = setOf("搜索", "菜单", "更多", "收藏", "评论", "点赞", "分享", "全屏观看", "全屏播放", "热评")
         private val INTERACTION_LABEL_PREFIXES = listOf("收藏，", "收藏,", "评论，", "评论,", "点赞，", "点赞,", "分享，", "分享,")
         private val WATCHING_COUNT_TEXT = Regex("共\\s*[\\d.,]+\\s*[万亿]?\\s*人在追")
