@@ -77,6 +77,25 @@ object Hooks {
     private fun controlEffectsActive(): Boolean = gMasterOn && featureEnabled("controls") &&
         (gControlOn || gCleanScreenOn || gControlOpacity < 100)
 
+    private val gVipSpoofSuppressed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    /**
+     * Membership spoofing answers "is this account VIP" for the whole process. Remote-content pages
+     * validate that answer against the server, so a spoofed value there leaves them stuck on their
+     * loader: the 我的 message center asks `NsUserInfoDependImpl.isVip()` while loading and never
+     * leaves the spinner when it is told "VIP" without the matching account data. Those pages keep
+     * the host's real state; the player, series, reader and profile pages keep the spoofed one.
+     */
+    private fun vipSpoofActive(): Boolean {
+        if (!gMasterOn || !gVipOn) return false
+        val name = try { gCurrentActivity?.javaClass?.name } catch (_: Throwable) { null }
+        if (com.hmodule.controls.VipScope.spoofAllowed(name)) return true
+        if (name != null && gVipSpoofSuppressed.add(name)) {
+            LogUtil.info("VIP 伪装已关闭（该页面使用真实会员状态）: $name")
+        }
+        return false
+    }
+
     private fun isControlHostActivity(activity: Activity?): Boolean = activity?.javaClass?.name in setOf(
         "com.dragon.read.pages.main.MainFragmentActivity",
         "com.dragon.read.component.shortvideo.impl.ShortSeriesActivity",
@@ -4399,13 +4418,13 @@ object Hooks {
             LogUtil.info("  ✓ 广告图标层") } catch (e: Exception) { LogUtil.warn("  AdIconLayer 未找到: $e") }
 
         try { val c = Class.forName("com.dragon.read.component.biz.impl.privilege.PrivilegeManager", false, classLoader)
-            ham(c, "isVip", "vipIsVip") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "isAnyVip", "vipAny") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "canReadShortStory", "vipRead") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "hasVipShortSeriesPrivilege", "vipSeries") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "b", "vipSubType") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "hasNoAdFollAllScene", "vipNoAd") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "hasNoAdForShortSeries", "vipNoAdS") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
+            ham(c, "isVip", "vipIsVip") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "isAnyVip", "vipAny") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "canReadShortStory", "vipRead") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "hasVipShortSeriesPrivilege", "vipSeries") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "b", "vipSubType") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "hasNoAdFollAllScene", "vipNoAd") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "hasNoAdForShortSeries", "vipNoAdS") { chain -> if (vipSpoofActive()) true else chain.proceed() }
 
             try {
                 val vim = Class.forName("com.dragon.read.user.model.VipInfoModel", false, classLoader)
@@ -4414,25 +4433,25 @@ object Hooks {
                 vc.isAccessible = true
                 val de = vct.getEnumConstants()[0]
                 val fakeModel = { vc.newInstance("2099-12-31 23:59:59", "1", "99999999", true, false, 0, true, de) }
-                c.declaredMethods.filter { it.name == "getVipInfo" }.forEachIndexed { i, m -> try { module.hook(m).setId("vipGetInfo_$i").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (gMasterOn && gVipOn) fakeModel() else chain.proceed() }) } catch (_: Exception) {} }
-                module.hook(c.getDeclaredMethod("getAllVipInfo")).setId("vipGetAll").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (gMasterOn && gVipOn) java.util.Collections.singletonList(fakeModel()) else chain.proceed() })
+                c.declaredMethods.filter { it.name == "getVipInfo" }.forEachIndexed { i, m -> try { module.hook(m).setId("vipGetInfo_$i").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (vipSpoofActive()) fakeModel() else chain.proceed() }) } catch (_: Exception) {} }
+                module.hook(c.getDeclaredMethod("getAllVipInfo")).setId("vipGetAll").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (vipSpoofActive()) java.util.Collections.singletonList(fakeModel()) else chain.proceed() })
                 LogUtil.info("  ✓ getVipInfo 模型")
             } catch (e2: Exception) { LogUtil.warn("  getVipInfo 模型 hook 失败: $e2") }
             LogUtil.info("  ✓ VIP 解锁 (PrivilegeManager)") } catch (e: Exception) { LogUtil.warn("  PrivilegeManager 未找到: $e") }
         try { val c = Class.forName("com.dragon.read.component.NsUserInfoDependImpl", false, classLoader)
-            ham(c, "isVip", "nsVip") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
+            ham(c, "isVip", "nsVip") { chain -> if (vipSpoofActive()) true else chain.proceed() }
             try {
                 val vim = Class.forName("com.dragon.read.user.model.VipInfoModel", false, classLoader)
                 val vct = Class.forName("com.dragon.read.rpc.model.VipCommonSubType", false, classLoader)
                 val vc = vim.getDeclaredConstructor(String::class.java, String::class.java, String::class.java, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType, vct)
                 vc.isAccessible = true
                 val de = vct.getEnumConstants()[0]
-                module.hook(c.getDeclaredMethod("getVipInfoModel")).setId("vipGetModel").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (gMasterOn && gVipOn) vc.newInstance("2099-12-31 23:59:59", "1", "99999999", true, false, 0, true, de) else chain.proceed() })
+                module.hook(c.getDeclaredMethod("getVipInfoModel")).setId("vipGetModel").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (vipSpoofActive()) vc.newInstance("2099-12-31 23:59:59", "1", "99999999", true, false, 0, true, de) else chain.proceed() })
                 LogUtil.info("  ✓ getVipInfoModel")
             } catch (e2: Exception) { LogUtil.warn("  getVipInfoModel hook 失败: $e2") }
             LogUtil.info("  ✓ NsUserInfoDependImpl.isVip") } catch (e: Exception) { LogUtil.warn("  NsUserInfoDependImpl 未找到: $e") }
         try { val c = Class.forName("com.dragon.read.component.NsComicAdDependImpl", false, classLoader)
-            ham(c, "isVipUser", "comicVip") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
+            ham(c, "isVipUser", "comicVip") { chain -> if (vipSpoofActive()) true else chain.proceed() }
             LogUtil.info("  ✓ NsComicAdDependImpl.isVipUser") } catch (e: Exception) { LogUtil.warn("  NsComicAdDependImpl 未找到: $e") }
 
         try {
@@ -4444,16 +4463,16 @@ object Hooks {
                 try {
                     val c = Class.forName(svc, false, classLoader)
                     module.hook(c.getDeclaredMethod("getVipInfo")).setId("kmpVipInfo_$svc").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
-                        if (gMasterOn && gVipOn) { try { eCtor.newInstance("1", "2099-12-31 23:59:59", "99999999", true, true, 0, true, 0, true, 0, true) } catch (_: Exception) { chain.proceed() } } else chain.proceed()
+                        if (vipSpoofActive()) { try { eCtor.newInstance("1", "2099-12-31 23:59:59", "99999999", true, true, 0, true, 0, true, 0, true) } catch (_: Exception) { chain.proceed() } } else chain.proceed()
                     })
                     kmpHooked++
                 } catch (_: Exception) {}
             }
             LogUtil.info("  ✓ KMP getVipInfo hooked=$kmpHooked ($gNames.kmpVipModel)") } catch (e: Exception) { LogUtil.warn("  KMP vip 模型 ${gNames.kmpVipModel} 未找到: $e") }
         try { val c = Class.forName("com.dragon.read.component.biz.impl.NsVipImpl", false, classLoader)
-            ham(c, "isVip", "nvVip") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "isSpecificVipOrHigher", "nvSpec") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
-            ham(c, "canShowVipCenter", "nvCenter") { chain -> if (gMasterOn && gVipOn) true else chain.proceed() }
+            ham(c, "isVip", "nvVip") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "isSpecificVipOrHigher", "nvSpec") { chain -> if (vipSpoofActive()) true else chain.proceed() }
+            ham(c, "canShowVipCenter", "nvCenter") { chain -> if (vipSpoofActive()) true else chain.proceed() }
             LogUtil.info("  ✓ NsVipImpl") } catch (e: Exception) { LogUtil.warn("  NsVipImpl 未找到: $e") }
 
         try {
