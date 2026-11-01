@@ -22,6 +22,7 @@ object ModuleConfig {
     internal const val RESET = "configuration_reset"
     private const val INITIALIZED = "configuration_initialized"
     private var localStore: SharedPreferences? = null
+    private var localContext: Context? = null
     private var notifier: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var remoteSnapshot: SharedPreferences? = null
     private var publisher: SharedPreferences? = null
@@ -40,8 +41,10 @@ object ModuleConfig {
         } catch (e: Exception) { com.hmodule.LogUtil.warn("果+框架配置备份失败: ${e.message}") }
     }
     @Synchronized fun local(context: Context): SharedPreferences {
-        localStore?.let { return it }
         val app = context.applicationContext
+        if (localContext === app) localStore?.let { return it }
+        notifier?.let { listener -> localStore?.unregisterOnSharedPreferenceChangeListener(listener) }
+        localContext = app
         val prefs = app.getSharedPreferences("guoplus_configuration", 0)
         notifier = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
             publish(prefs)
@@ -54,6 +57,7 @@ object ModuleConfig {
     }
     fun open(context: Context, legacy: SharedPreferences? = null): SharedPreferences {
         if (context.packageName == "com.hmodule") return local(context)
+        require(context.packageName in setOf("com.phoenix.read", "com.phoenix.read.oversea.gp")) { "不支持的宿主应用" }
         return openHost(context.applicationContext, legacy, remoteSnapshot) { method, data ->
             context.contentResolver.call(URI, method, null, data)
         }
@@ -220,9 +224,10 @@ class ConfigurationProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle = synchronized(lock) {
         val ctx = requireNotNull(context)
         val uid = Binder.getCallingUid()
-        if (!(uid == Process.myUid() || ctx.packageManager.getPackagesForUid(uid)?.any {
-            it == "com.phoenix.read" || it == "com.phoenix.read.oversea.gp"
-        } == true)) throw SecurityException("配置访问未授权")
+        val own = uid == Process.myUid()
+        val packages = ctx.packageManager.getPackagesForUid(uid)?.toSet().orEmpty()
+        if (!own && (packages.isEmpty() || !packages.all { it in setOf("com.phoenix.read", "com.phoenix.read.oversea.gp") }))
+            throw SecurityException("配置访问未授权")
         val prefs = ModuleConfig.local(ctx)
         when (method) {
             "cache_adaptation" -> {
@@ -240,6 +245,7 @@ class ConfigurationProvider : ContentProvider() {
                     val editor = prefs.edit()
                     // Explicit settings made in LSPosed take precedence over old host settings.
                     val missing = Bundle(extras ?: Bundle())
+                    if (!own) missing.remove(ModuleConfig.THEME)
                     prefs.all.keys.forEach(missing::remove)
                     ModuleConfig.put(editor, missing)
                     check(editor.remove("player_bar").putBoolean("configuration_initialized", true).commit())
@@ -248,10 +254,16 @@ class ConfigurationProvider : ContentProvider() {
                 Bundle().apply { putBoolean("ok", true) }
             }
             "write" -> {
+                val values = extras?.getBundle("values") ?: Bundle()
+                if (!own) require(!values.containsKey(ModuleConfig.THEME) &&
+                    extras?.getStringArrayList("remove")?.contains(ModuleConfig.THEME) != true) { "主题请从模块应用修改" }
                 val editor = prefs.edit()
-                if (extras?.getBoolean("clear") == true) editor.clear()
+                if (extras?.getBoolean("clear") == true) {
+                    editor.clear()
+                    if (!own) editor.putString(ModuleConfig.THEME, prefs.getString(ModuleConfig.THEME, "system"))
+                }
                 extras?.getStringArrayList("remove")?.forEach(editor::remove)
-                ModuleConfig.put(editor, extras?.getBundle("values") ?: Bundle())
+                ModuleConfig.put(editor, values)
                 val ok = editor.commit()
                 if (ok) {
                     ctx.contentResolver.notifyChange(ModuleConfig.URI, null)

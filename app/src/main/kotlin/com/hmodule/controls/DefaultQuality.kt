@@ -18,6 +18,7 @@ enum class DefaultQuality(val key: String, val title: String, val rank: Int) {
 
     companion object {
         const val VALUE_KEY = "guoplus_default_quality"
+        const val HIDE_TIP_KEY = "guoplus_hide_quality_tip"
         fun fromKey(key: String?): DefaultQuality = when (key) {
             "2160", "1440", "1080plus" -> FHD
             else -> entries.firstOrNull { it.key == key } ?: HIGHEST

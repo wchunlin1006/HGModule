@@ -16,6 +16,67 @@ import org.robolectric.shadows.ShadowDialog
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ControlSettingsTest {
+    @Test fun qualityTipOptionExpandsWithDefaultQualityAndKeepsItsChoice() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val prefs = activity.getSharedPreferences("quality-tip-option", Context.MODE_PRIVATE)
+        var changes = 0
+        val page = com.hmodule.ui.FeatureSettings.content(activity, prefs) { changes++ }
+        activity.setContentView(page)
+        fun toggle(title: String) = descendants(page).filterIsInstance<Switch>()
+            .single { it.contentDescription == title }
+        val quality = toggle("默认画质")
+        val tip = toggle("隐藏提示")
+        assertFalse(tip.isShown)
+        assertFalse(tip.isChecked)
+        quality.isChecked = true
+        assertTrue(tip.isShown)
+        (tip.parent as View).performClick()
+        assertTrue(prefs.getBoolean(DefaultQuality.HIDE_TIP_KEY, false))
+        quality.isChecked = false
+        assertFalse(tip.isShown)
+        assertTrue(prefs.getBoolean(DefaultQuality.HIDE_TIP_KEY, false))
+        quality.isChecked = true
+        assertTrue(tip.isShown)
+        assertTrue(tip.isChecked)
+        assertEquals(4, changes)
+        val recreated = com.hmodule.ui.FeatureSettings.content(activity, prefs) {}
+        activity.setContentView(recreated)
+        assertTrue(descendants(recreated).filterIsInstance<Switch>()
+            .single { it.contentDescription == "隐藏提示" }.isShown)
+    }
+
+    @Test fun channelOptionsExpandPersistAndKeepTheirIndividualChoices() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val prefs = activity.getSharedPreferences("channel-options", Context.MODE_PRIVATE)
+        val settings = ControlSettings(prefs)
+        // Existing whole-channel configurations continue to hide all channels by default.
+        assertTrue(settings.allChannels())
+        settings.show(activity) {}
+        val dialog = ShadowDialog.getLatestDialog()
+        fun toggle(title: String) = descendants(dialog.window!!.decorView).filterIsInstance<Switch>()
+            .single { it.contentDescription == title }
+        val channel = toggle("频道标签")
+        val all = toggle("全部")
+        val follow = toggle("关注")
+        assertFalse(all.isShown)
+        channel.isChecked = true
+        assertTrue(all.isShown)
+        assertFalse(follow.isShown)
+        all.isChecked = false
+        assertTrue(follow.isShown)
+        follow.isChecked = true
+        assertEquals(setOf(ChannelTarget.FOLLOW), settings.hiddenChannels())
+        all.isChecked = true
+        assertFalse(follow.isShown)
+        channel.isChecked = false
+        assertFalse(all.isShown)
+        channel.isChecked = true
+        all.isChecked = false
+        assertTrue(follow.isShown)
+        assertTrue(follow.isChecked)
+        assertTrue(toggle("游戏中心").isShown)
+        dialog.dismiss()
+    }
     private fun descendants(view: View): List<View> = listOf(view) +
         if (view is ViewGroup) (0 until view.childCount).flatMap { descendants(view.getChildAt(it)) } else emptyList()
 

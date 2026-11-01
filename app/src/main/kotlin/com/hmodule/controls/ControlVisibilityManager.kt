@@ -24,8 +24,10 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
     private data class ParentState(var visibility: Int, var alpha: Float, val x: Float, val y: Float)
     private data class BackdropState(val background: Drawable?, var visibility: Int, var alpha: Float)
     private data class RowShift(var nativeY: Float, var offset: Float)
+    private data class ChannelState(var channel: ChannelTarget, var visibility: Int)
 
     private val controls = WeakHashMap<View, State>()
+    private val channelViews = WeakHashMap<View, ChannelState>()
     private val clearHosts = WeakHashMap<View, Int>()
     private val opacityHosts = WeakHashMap<View, Float>()
     private val interactionHosts = WeakHashMap<View, Int>()
@@ -77,6 +79,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             }
             lastKeepDanmaku = policy.keepDanmaku
             discover(root)
+            syncChannels(root)
             syncOpacityHosts(root)
             syncInteractionHosts(root)
             if (!policy.temporarilyRestored) restorePauseParents()
@@ -102,6 +105,11 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         if (view in infoHosts) { infoHosts[view] = requested; return View.GONE }
         if (view in clearHosts) { clearHosts[view] = requested; return clearedVisibility(view) }
         if (view in interactionHosts) { interactionHosts[view] = requested; return View.INVISIBLE }
+        channelViews[view]?.let { state ->
+            state.visibility = requested
+            controls[view]?.nativeVisibility = requested
+            return channelVisibility(state)
+        }
         pauseParents[view]?.let { it.visibility = requested; return View.VISIBLE }
         val state = controls[view] ?: return requested
         state.nativeVisibility = requested
@@ -157,6 +165,8 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             restoreTabLayouts()
             restoreInfoHosts()
             restoreRowShifts()
+            for ((view, state) in channelViews.entries.toList()) mutate { view.visibility = state.visibility }
+            channelViews.clear()
         } finally { applying = false }
     }
 
@@ -566,6 +576,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
     }
 
     private fun apply(view: View, state: State) {
+        if (view in channelViews) return
         val hide = policy.hides(state.target)
         val visibility = when {
             hide && (view.parent as? View) !in interactionHosts -> hiddenVisibility(state.target)
@@ -625,6 +636,102 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             }
         }
         if (view is ViewGroup) for (i in 0 until view.childCount) discover(view.getChildAt(i))
+    }
+
+    private fun channelVisibility(state: ChannelState): Int = when {
+        policy.hides(ControlTarget.TOP_TABS) -> View.INVISIBLE
+        policy.hidesChannel(state.channel) -> View.GONE
+        else -> state.visibility
+    }
+
+    private fun insideChannelTabs(view: View): Boolean {
+        if (controls[view]?.target == ControlTarget.TOP_TABS) return true
+        var node = view.parent as? View
+        repeat(8) {
+            val parent = node ?: return false
+            if (controls[parent]?.target == ControlTarget.TOP_TABS ||
+                resourceOverrides[entryName(parent)] == ControlTarget.TOP_TABS.key ||
+                resourceTargets[entryName(parent)] == ControlTarget.TOP_TABS ||
+                profileId == "CN-7.3.2.32" && CN_73232_TARGETS[entryName(parent)] == ControlTarget.TOP_TABS) return true
+            node = parent.parent as? View
+        }
+        return false
+    }
+
+    private fun syncChannels(root: View) {
+        val discovered = mutableSetOf<View>()
+        fun hasAnotherLabel(node: View, label: String): Boolean {
+            if (node is TextView && node.text.toString().trim() in TOP_TAB_LABELS && node.text.toString().trim() != label) return true
+            return node is ViewGroup && (0 until node.childCount).any { hasAnotherLabel(node.getChildAt(it), label) }
+        }
+        fun walk(view: View) {
+            if (view.tag == MODULE_UI_TAG) return
+            val label = (view as? TextView)?.text?.toString()?.trim()
+            val channel = ChannelTarget.entries.firstOrNull { it.title == label }
+            if (channel != null && insideChannelTabs(view)) {
+                // Hide the individual tab's icon/hit area too, while leaving its siblings intact.
+                var slot = view
+                repeat(4) {
+                    val parent = slot.parent as? ViewGroup ?: return@repeat
+                    val name = entryName(parent)
+                    val knownHost = resourceOverrides[name] == ControlTarget.TOP_TABS.key ||
+                        resourceTargets[name] == ControlTarget.TOP_TABS ||
+                        profileId == "CN-7.3.2.32" && CN_73232_TARGETS[name] == ControlTarget.TOP_TABS
+                    if (parent === root || knownHost ||
+                        hasAnotherLabel(parent, channel.title) || parent.javaClass.name.contains("Pager")) return@repeat
+                    slot = parent
+                }
+                channelViews.getOrPut(slot) { ChannelState(channel, controls[slot]?.nativeVisibility ?: slot.visibility) }.channel = channel
+                discovered.add(slot)
+            }
+            if (view is ViewGroup) for (index in 0 until view.childCount) walk(view.getChildAt(index))
+        }
+        val hosts = controls.entries.filter { it.value.target == ControlTarget.TOP_TABS && inside(it.key, root) }
+            .map { if (it.key is TextView) it.key.parent as? View ?: it.key else it.key }.distinct()
+        hosts.forEach(::walk)
+        for ((view, state) in channelViews.entries.toList()) if (inside(view, root)) {
+            val desired = if (view in discovered) channelVisibility(state) else state.visibility
+            if (view.visibility != desired) mutate { view.visibility = desired }
+            if (view !in discovered) channelViews.remove(view)
+        }
+    }
+
+    /** Identify the channel pager by its sibling tab host, never a nested video pager. */
+    fun blocksChannelSwipe(pager: View): Boolean {
+        return policy.blocksChannelSwipe && isChannelPager(pager)
+    }
+
+    fun channelPagers(root: View): Set<View> {
+        val result = linkedSetOf<View>()
+        for ((tabs, state) in controls.entries.toList()) if (state.target == ControlTarget.TOP_TABS && inside(tabs, root)) {
+            var node = tabs.parent as? ViewGroup
+            repeat(5) {
+                val parent = node ?: return@repeat
+                for (index in 0 until parent.childCount) {
+                    val child = parent.getChildAt(index)
+                    if (isChannelPager(child)) result.add(child)
+                }
+                node = parent.parent as? ViewGroup
+            }
+        }
+        return result
+    }
+
+    fun isChannelPager(pager: View): Boolean {
+        if (pager.javaClass.name != "com.dragon.read.widget.viewpager.CustomScrollViewPager") return false
+        val parent = pager.parent as? ViewGroup ?: return false
+        return controls.entries.any { (tabs, state) ->
+            if (state.target != ControlTarget.TOP_TABS || inside(tabs, pager)) false
+            else {
+                var node: View? = tabs.parent as? View
+                var found = false
+                repeat(5) {
+                    if (node === parent) found = true
+                    node = node?.parent as? View
+                }
+                found
+            }
+        }
     }
 
     private fun splitConflictingAncestors(view: View, target: ControlTarget) {
@@ -703,6 +810,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         }
         resourceTargets[name]?.let { return it }
         val text = ((view as? TextView)?.text?.toString() ?: view.contentDescription?.toString().orEmpty()).trim()
+        if (text == "游戏中心" && insideSidebar(view)) return ControlTarget.GAME_CENTER
         if (text.contains("领金币") || text.contains("领取金币")) return ControlTarget.COIN_REWARD
         if (text.isEmpty()) return null
         // Counts can be filled after their containing information panel is already hidden.
@@ -738,6 +846,12 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
     }
 
     private fun controlContainer(view: View, target: ControlTarget): View {
+        if (target == ControlTarget.GAME_CENTER) {
+            val parent = view.parent as? ViewGroup
+            // A sidebar title can share a host with other sections; do not hide that whole host.
+            return if (parent != null && !parent.javaClass.name.contains("sidebar", true) &&
+                !entryName(parent).contains("sidebar", true) && !entryName(parent).contains("side_bar")) parent else view
+        }
         if (view is ViewGroup || entryName(view) in resourceTargets || entryName(view) in resourceOverrides ||
             profileId == "CN-7.3.2.32" && entryName(view) in CN_73232_TARGETS) return view
         var candidate = view
@@ -753,6 +867,18 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             if (parent.isClickable) return candidate
         }
         return candidate
+    }
+
+    private fun insideSidebar(view: View): Boolean {
+        var node: View? = view
+        repeat(16) {
+            val current = node ?: return false
+            if (current.javaClass.name.contains("sidebar", ignoreCase = true) ||
+                entryName(current).contains("sidebar", ignoreCase = true) ||
+                entryName(current).contains("side_bar")) return true
+            node = current.parent as? View
+        }
+        return false
     }
 
     private fun insidePlayerRightPanel(view: View): Boolean {

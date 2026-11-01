@@ -29,6 +29,26 @@ class ControlSyncPerformanceTest {
         }
     }
 
+    @Test fun repeatedPartialChannelSyncDoesNotToggleVisibilityOrRequestAnotherLayout() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val root = FrameLayout(activity)
+        val tabs = LayoutCounter(activity).apply { id = android.R.id.tabs }
+        root.addView(tabs); activity.setContentView(root)
+        val follow = TextView(activity).apply { text = "关注" }
+        val comic = TextView(activity).apply { text = "漫剧" }
+        tabs.addView(follow); tabs.addView(comic)
+        val manager = ControlVisibilityManager { it() }
+        manager.resourceOverrides = mapOf("tabs" to "top_tabs")
+        manager.policy = ControlPolicy(true, true, setOf(ControlTarget.TOP_TABS),
+            allChannels = false, hiddenChannels = setOf(ChannelTarget.FOLLOW))
+        manager.sync(root)
+        tabs.requests = 0
+        repeat(30) { manager.sync(root) }
+        assertEquals(View.GONE, follow.visibility)
+        assertEquals(View.VISIBLE, comic.visibility)
+        assertEquals(0, tabs.requests)
+    }
+
     @Test fun repeatedSyncDoesNotRequestLayoutForAlreadyReflowedInformation() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val root = FrameLayout(activity)

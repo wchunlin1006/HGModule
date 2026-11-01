@@ -5,6 +5,7 @@ enum class ControlTarget(val key: String, val title: String, val section: String
     TOP_TABS("top_tabs", "频道标签", "顶部入口"),
     SEARCH("search", "搜索入口", "顶部入口"),
     MENU("menu", "侧边菜单", "顶部入口"),
+    GAME_CENTER("game_center", "游戏中心", "侧边栏"),
     BACK_EPISODE("back_episode", "返回与集数", "播放操作"),
     PLAYBACK_SPEED("playback_speed", "倍速入口", "播放操作"),
     PLAYER_MORE("player_more", "播放菜单", "播放操作"),
@@ -32,6 +33,12 @@ enum class ControlTarget(val key: String, val title: String, val section: String
 
     val preferenceKey: String get() = "guoplus_hide_$key"
     val isBottomTab: Boolean get() = section == "底部导航"
+    val isGlobal: Boolean get() = isBottomTab || this == GAME_CENTER || this == TOP_TABS
+}
+
+enum class ChannelTarget(val key: String, val title: String) {
+    FOLLOW("follow", "关注"), COMIC("comic", "漫剧"), LIVE("live", "真人剧");
+    val preferenceKey: String get() = "guoplus_hide_channel_$key"
 }
 
 data class ControlPolicy(
@@ -43,10 +50,12 @@ data class ControlPolicy(
     val opacityPercent: Int = 100,
     val fullClearEnabled: Boolean = false,
     val keepDanmaku: Boolean = true,
+    val allChannels: Boolean = true,
+    val hiddenChannels: Set<ChannelTarget> = emptySet(),
 ) {
-    /** Navigation remains configurable on every main tab; video effects stay on playback pages. */
+    /** Navigation and the sidebar work on every main tab; video effects stay on playback pages. */
     fun forPage(hasPlayer: Boolean): ControlPolicy = if (hasPlayer) this else copy(
-        selected = selected.filterTo(linkedSetOf()) { it.isBottomTab },
+        selected = selected.filterTo(linkedSetOf()) { it.isGlobal },
         fullClearEnabled = false,
         restoreOnPause = false,
         opacityPercent = 100,
@@ -60,8 +69,14 @@ data class ControlPolicy(
     fun hides(target: ControlTarget): Boolean = when {
         !masterEnabled -> false
         clearsAll -> true
-        else -> hideEnabled && target in selected
+        else -> hideEnabled && target in selected && (target != ControlTarget.TOP_TABS || allChannels)
     }
+
+    val blocksChannelSwipe: Boolean get() = masterEnabled && hideEnabled &&
+        ControlTarget.TOP_TABS in selected && allChannels
+
+    fun hidesChannel(channel: ChannelTarget): Boolean = clearsAll || masterEnabled && hideEnabled &&
+        ControlTarget.TOP_TABS in selected && (allChannels || channel in hiddenChannels)
 
     fun alpha(original: Float): Float = if (masterEnabled && !temporarilyRestored) original * opacity else original
 

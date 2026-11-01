@@ -83,13 +83,22 @@ object FeatureSettings {
         toggle("暂停时退出清屏", "在清屏播放（果+）时，暂停播放临时退出清屏", "restore_controls_pause")
         section("播放与手势")
         lateinit var quality: Pair<LinearLayout, TextView>
-        quality = toggle("默认画质", "当前 ${settings.defaultQuality().title}", "max_quality") {
+        lateinit var qualityTipRow: LinearLayout
+        quality = toggle("默认画质", "当前 ${settings.defaultQuality().title}", "max_quality",
+            onToggle = {
+                qualityTipRow.visibility = if (prefs.getBoolean("max_quality", false))
+                    android.view.View.VISIBLE else android.view.View.GONE
+            }) {
             settings.showQuality(activity) {
                 quality.second.text = "当前 ${settings.defaultQuality().title}"
                 (quality.first.getChildAt(1) as Switch).isChecked = true
                 changed()
             }
         }
+        qualityTipRow = toggle("隐藏提示", "隐藏切换画质时的提示", com.hmodule.controls.DefaultQuality.HIDE_TIP_KEY,
+            indentDp = 12).first
+        qualityTipRow.visibility = if (prefs.getBoolean("max_quality", false))
+            android.view.View.VISIBLE else android.view.View.GONE
         fun speedLabel() = "当前 ${prefs.getFloat("default_speed_value", 1f)}x"
         lateinit var speed: Pair<LinearLayout, TextView>
         speed = toggle("默认倍速", speedLabel(), "default_speed") {

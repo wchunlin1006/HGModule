@@ -4,6 +4,27 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ControlPolicyTest {
+    @Test fun channelSelectionAndSwipeBlockingRespectBothGatesAndPageScope() {
+        val partial = ControlPolicy(true, true, setOf(ControlTarget.TOP_TABS, ControlTarget.GAME_CENTER),
+            allChannels = false, hiddenChannels = setOf(ChannelTarget.COMIC))
+        assertFalse(partial.hides(ControlTarget.TOP_TABS))
+        assertTrue(partial.hidesChannel(ChannelTarget.COMIC))
+        assertFalse(partial.hidesChannel(ChannelTarget.FOLLOW))
+        assertFalse(partial.blocksChannelSwipe)
+        val all = partial.copy(allChannels = true)
+        assertTrue(all.blocksChannelSwipe)
+        assertTrue(all.hides(ControlTarget.TOP_TABS))
+        assertTrue(ChannelTarget.entries.all(all::hidesChannel))
+        for (off in listOf(all.copy(masterEnabled = false), all.copy(hideEnabled = false))) {
+            assertFalse(off.blocksChannelSwipe)
+            assertFalse(ChannelTarget.entries.any(off::hidesChannel))
+        }
+        assertTrue(all.forPage(false).blocksChannelSwipe)
+        assertTrue(partial.forPage(false).hidesChannel(ChannelTarget.COMIC))
+        assertTrue(partial.forPage(false).hides(ControlTarget.GAME_CENTER))
+        assertFalse(partial.copy(masterEnabled = false).forPage(false).hides(ControlTarget.GAME_CENTER))
+        assertFalse(partial.copy(selected = emptySet()).hidesChannel(ChannelTarget.COMIC))
+    }
     @Test fun nonPlaybackPageKeepsOnlyNavigationSelectionAndRespectsBothGates() {
         val configured = ControlPolicy(true, true, setOf(ControlTarget.MALL, ControlTarget.SERIES_INFO),
             true, true, 0, true)

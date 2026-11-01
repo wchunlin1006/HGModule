@@ -54,6 +54,12 @@ object Hooks {
     private var gCleanScreenOn = false
     private var gControlOpacity = 100
     private var controlSettings: ControlSettings? = null
+    private var gSidebarGameOn = false
+    private var refreshSidebarGames: (() -> Unit)? = null
+    private var homeSidebarGames: com.hmodule.controls.HomeSidebarGameState? = null
+    private var refreshChannelPager: ((View) -> Unit)? = null
+    private var gHideQualityTip = false
+    private val qualityToastScope = com.hmodule.controls.QualityToastScope()
     private var reconcileControlVisibilityHook: (() -> Unit)? = null
     private val controlVisibility = ControlVisibilityManager { block -> internalViewMutation { block() } }
     private val playbackDrawer = PlaybackDrawer(::controlPolicy, ::toggleCleanScreen) { showPanel(null) }
@@ -65,6 +71,8 @@ object Hooks {
         if (featureEnabled("controls")) gControlOpacity else 100,
         gCleanScreenOn && featureEnabled("playback") && featureEnabled("controls"),
         gKeepDanmaku,
+        controlSettings?.allChannels() ?: true,
+        controlSettings?.hiddenChannels() ?: emptySet(),
     )
 
     private fun pauseRestoresControls(): Boolean =
@@ -143,6 +151,9 @@ object Hooks {
         }
         bindProgress(root)
         controlVisibility.sync(root)
+        if (gMasterOn && gControlOn && !controlVisibility.policy.allChannels &&
+            controlVisibility.policy.hiddenChannels.isNotEmpty())
+            for (pager in controlVisibility.channelPagers(root)) refreshChannelPager?.invoke(pager)
         gCurrentActivity?.window?.let(controlVisibility::syncWindow)
         if (controlVisibility.policy.clearsAll) {
             reclaimFeedViewportBottomMargin(root)
@@ -357,6 +368,8 @@ object Hooks {
         reloadPreferences()
         updatePeriodicScanState()
         reconcileControlVisibilityHook?.invoke()
+        if (changed.any { it in setOf("master_on", "control_hide", ControlTarget.GAME_CENTER.preferenceKey) })
+            refreshSidebarGames?.invoke()
         if (wasMaster && !gMasterOn) {
             restoreAllSavedViews()
             restoreShortVideoNativeControls()
@@ -380,6 +393,7 @@ object Hooks {
         gControlOpacity = controlSettings?.opacityPercent() ?: 100
         gStatusOn = gPrefs!!.getBoolean("status_bar", false)
         gControlOn = gPrefs!!.getBoolean("control_hide", false) && featureEnabled("controls")
+        gSidebarGameOn = gPrefs!!.getBoolean(ControlTarget.GAME_CENTER.preferenceKey, false)
         gCleanScreenOn = gPrefs!!.getBoolean("guoplus_clean_screen", false) && featureEnabled("playback") && featureEnabled("controls")
         gTopZoneOn = gPrefs!!.getBoolean("top_zone", false)
         gAdOn = gPrefs!!.getBoolean("ad_block", false)
@@ -389,6 +403,7 @@ object Hooks {
         gVipOn = gPrefs!!.getBoolean("vip_unlock", false)
         gVipIconOn = gPrefs!!.getBoolean("vip_icon", false)
         gDefaultQualityOn = gPrefs!!.getBoolean("max_quality", false) && featureEnabled("quality")
+        gHideQualityTip = gPrefs!!.getBoolean(DefaultQuality.HIDE_TIP_KEY, false)
         gDefaultSpeedOn = gPrefs!!.getBoolean(DEFAULT_SPEED_PREF, false) && featureEnabled("speed")
         gDefaultSpeed = normalizeDefaultSpeed(gPrefs!!.getFloat(DEFAULT_SPEED_VALUE_PREF, 1.0f))
         gDoubleTapCommentOn = gPrefs!!.getBoolean("double_tap_comment", false) && featureEnabled("comments")
@@ -399,6 +414,8 @@ object Hooks {
         gDownloadOneDayEpisode = gPrefs!!.getInt(DOWNLOAD_LIMIT_EPISODE_PREF, DOWNLOAD_LIMIT_DEFAULT_VALUE)
         gDownloadOneDaySeries = gPrefs!!.getInt(DOWNLOAD_LIMIT_SERIES_PREF, DOWNLOAD_LIMIT_DEFAULT_VALUE)
         gDownloadTotalSeries = gPrefs!!.getInt(DOWNLOAD_LIMIT_TOTAL_PREF, DOWNLOAD_LIMIT_DEFAULT_VALUE)
+        try { homeSidebarGames?.setEnabled(gMasterOn && gControlOn && gSidebarGameOn) }
+        catch (e: Exception) { LogUtil.warn("首页侧边栏游戏状态刷新失败: ${e.message}") }
     }
 
     private fun savePref(key: String, value: Boolean) {
@@ -3447,6 +3464,28 @@ object Hooks {
             }
         }
 
+        try {
+            val resolution = Class.forName("com.ss.ttvideoengine.Resolution", false, classLoader)
+            val holder = Class.forName(gNames.shortHolder, false, classLoader)
+            val callback = holder.declaredMethods.single {
+                it.returnType == Void.TYPE && it.parameterTypes.contentEquals(arrayOf(resolution, resolution))
+            }
+            val toast = Class.forName("qv4.r\$a", false, classLoader).getDeclaredMethod(
+                "b", String::class.java, String::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            check(toast.returnType == Void.TYPE && java.lang.reflect.Modifier.isStatic(toast.modifiers))
+            module.hook(callback).setId("qualityToastScope")
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
+                    if (gMasterOn && gDefaultQualityOn && gHideQualityTip)
+                        qualityToastScope.during { chain.proceed() }
+                    else chain.proceed()
+                })
+            module.hook(toast).setId("qualityToastHide")
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
+                    if (qualityToastScope.active) null else chain.proceed()
+                })
+            LogUtil.info("  ✓ 默认画质提示独立控制")
+        } catch (e: Exception) { LogUtil.warn("画质提示 Hook 不可用: ${e.message}") }
+
         if (gNames.resolutionController.isNotBlank()) {
             try {
                 val controllerClass = Class.forName(gNames.resolutionController, false, classLoader)
@@ -4193,6 +4232,145 @@ object Hooks {
         } catch (e: Exception) { LogUtil.error("顶部下滑拦截", e) }
 
         try { val c = Class.forName("androidx.swiperefreshlayout.widget.SwipeRefreshLayout", false, classLoader); module.hook(c.getDeclaredMethod("onInterceptTouchEvent", android.view.MotionEvent::class.java)).setId("sw").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain -> if (gMasterOn && gRefreshOff) false else chain.proceed() }); LogUtil.info("  ✓ swipe") } catch (e: Exception) { LogUtil.warn("  SwipeRefreshLayout 未找到") }
+
+        try {
+            val pager = Class.forName("com.dragon.read.widget.viewpager.CustomScrollViewPager", false, classLoader)
+            for (method in listOf("onInterceptTouchEvent", "onTouchEvent")) {
+                module.hook(pager.getDeclaredMethod(method, android.view.MotionEvent::class.java))
+                    .setId("channelSwipe_$method").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                    .intercept(Hooker { chain ->
+                        val view = chain.thisObject as? View
+                        if (gMasterOn && gControlOn && view != null && controlVisibility.blocksChannelSwipe(view)) false
+                        else chain.proceed()
+                    })
+            }
+        } catch (e: Exception) { LogUtil.warn("频道滑动拦截不可用: ${e.message}") }
+
+        try {
+            val pagerType = Class.forName("androidx.viewpager.widget.ViewPager", false, classLoader)
+            val getAdapter = pagerType.getMethod("getAdapter")
+            val getCurrent = pagerType.getMethod("getCurrentItem")
+            val setCurrent = pagerType.getMethod("setCurrentItem", Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)
+            val adapterType = Class.forName("androidx.viewpager.widget.PagerAdapter", false, classLoader)
+            val getCount = adapterType.getMethod("getCount")
+            val getTitle = adapterType.getMethod("getPageTitle", Int::class.javaPrimitiveType)
+            fun destination(view: View, requested: Int): Int {
+                if (!gMasterOn || !gControlOn) return requested
+                val policy = controlPolicy()
+                if (policy.allChannels || policy.hiddenChannels.isEmpty() || ControlTarget.TOP_TABS !in policy.selected) return requested
+                if (!controlVisibility.isChannelPager(view)) return requested
+                return try {
+                    val adapter = getAdapter.invoke(view) ?: return requested
+                    val count = (getCount.invoke(adapter) as Number).toInt()
+                    if (count !in 1..64) return requested
+                    val titles = (0 until count).map { getTitle.invoke(adapter, it)?.toString().orEmpty() }
+                    com.hmodule.controls.ChannelNavigation.destination(titles,
+                        (getCurrent.invoke(view) as Number).toInt(), requested, policy)
+                } catch (e: Exception) { LogUtil.warn("频道目标解析失败: ${e.message}"); requested }
+            }
+            val custom = Class.forName("com.dragon.read.widget.viewpager.CustomScrollViewPager", false, classLoader)
+            val methods = pagerType.declaredMethods.filter { it.name == "setCurrentItemInternal" &&
+                it.parameterTypes.firstOrNull() == Int::class.javaPrimitiveType } +
+                custom.getDeclaredMethod("setCurrentItem", Int::class.javaPrimitiveType)
+            methods.forEachIndexed { index, method ->
+                module.hook(method).setId("channelDestination_$index")
+                    .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
+                        val view = chain.thisObject as? View ?: return@Hooker chain.proceed()
+                        val requested = chain.getArg(0) as? Int ?: return@Hooker chain.proceed()
+                        val target = destination(view, requested)
+                        if (target == requested) chain.proceed()
+                        else chain.proceed(chain.args.toTypedArray().also { it[0] = target })
+                    })
+            }
+            refreshChannelPager = { view ->
+                try {
+                    val current = (getCurrent.invoke(view) as Number).toInt()
+                    val target = destination(view, current)
+                    if (target != current) setCurrent.invoke(view, target, false)
+                } catch (e: Exception) { LogUtil.warn("频道切换刷新失败: ${e.message}") }
+            }
+            LogUtil.info("  ✓ 跳过已精简频道")
+        } catch (e: Exception) { LogUtil.warn("频道目标拦截不可用: ${e.message}") }
+
+        try {
+            val tabs = Class.forName("com.dragon.read.widget.tab.SlidingTabLayout", false, classLoader)
+            val pager = Class.forName("androidx.viewpager.widget.ViewPager", false, classLoader)
+            val renderer = com.hmodule.controls.NativeChannelTabs(tabs, pager, controlVisibility::isChannelPager)
+            for (method in listOf("r", "d")) {
+                module.hook(tabs.getDeclaredMethod(method)).setId("channelTabs_$method")
+                    .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
+                        val view = chain.thisObject as? View ?: return@Hooker chain.proceed()
+                        val policy = controlVisibility.policy
+                        val handled = if (method == "r") renderer.scroll(view, policy) else renderer.draw(view, policy)
+                        if (handled) null else chain.proceed()
+                    })
+            }
+            val listener = Class.forName("com.dragon.read.widget.tab.SlidingTabLayout\$b", false, classLoader)
+            val owner = listener.getDeclaredField("a").apply { isAccessible = true }
+            module.hook(listener.getDeclaredMethod("onPageScrollStateChanged", Int::class.javaPrimitiveType))
+                .setId("channelTabsSettled").setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                .intercept(Hooker { chain ->
+                    val view = owner.get(chain.thisObject) as? View
+                    val settled = chain.getArg(0) as? Int == 0
+                    if (settled && view != null) renderer.settle(view, controlVisibility.policy)
+                    val result = chain.proceed()
+                    if (settled && view != null) renderer.scroll(view, controlVisibility.policy)
+                    result
+                })
+            LogUtil.info("  ✓ 频道指示器与可见标签同步")
+        } catch (e: Exception) { LogUtil.warn("频道指示器同步不可用: ${e.message}") }
+
+        try {
+            val state = Class.forName("androidx.compose.runtime.MutableState", false, classLoader)
+            val snapshots = Class.forName("androidx.compose.runtime.SnapshotStateKt", false, classLoader)
+            val mutationPolicy = Class.forName("androidx.compose.runtime.SnapshotMutationPolicy", false, classLoader)
+            val policy = snapshots.getMethod("structuralEqualityPolicy").invoke(null)
+            val flag = snapshots.getMethod("mutableStateOf", Any::class.java, mutationPolicy)
+                .invoke(null, gMasterOn && gControlOn && gSidebarGameOn, policy) ?: error("Missing sidebar switch state")
+            val header = Class.forName("com.dragon.read.leftslidepage.m", false, classLoader)
+            val games = Class.forName("com.dragon.read.leftslidepage.i", false, classLoader)
+            val footer = Class.forName("com.dragon.read.leftslidepage.r", false, classLoader)
+            val emptyHeader = header.getConstructor(String::class.java, String::class.java, Boolean::class.javaPrimitiveType)
+                .newInstance("", "", true)
+            val emptyGames = games.getConstructor(header, List::class.java, footer).newInstance(emptyHeader, emptyList<Any>(), null)
+            val mask = com.hmodule.controls.HomeSidebarGameState(state, flag, emptyGames)
+            val holder = Class.forName("com.dragon.read.leftslidepage.t", false, classLoader)
+            val constructor = holder.declaredConstructors.single { it.parameterCount == 7 && it.parameterTypes.all { type -> type == state } }
+            module.hook(constructor).setId("homeSidebarGameState")
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
+                    val args = chain.args.toTypedArray()
+                    val native = args[3]
+                    if (native != null && games.isInstance(state.getMethod("getValue").invoke(native))) {
+                        args[3] = mask.wrap(native)
+                        chain.proceed(args)
+                    } else chain.proceed()
+                })
+            homeSidebarGames = mask
+            LogUtil.info("  ✓ 首页侧边栏游戏中心整区精简")
+        } catch (e: Exception) { LogUtil.warn("首页侧边栏游戏状态 Hook 不可用: ${e.message}") }
+
+        try {
+            val cellType = Class.forName("com.dragon.read.rpc.model.MyTabCellType", false, classLoader)
+            val game = cellType.getField("GameCenter").get(null)
+            val gameId = (cellType.getMethod("getValue").invoke(game) as Number).toInt()
+            val sidebar = Class.forName("com.dragon.read.kmp.mine.sidebar.MineSidebarController", false, classLoader)
+            val visibleItems = sidebar.getDeclaredMethod("e").apply {
+                check(List::class.java.isAssignableFrom(returnType))
+            }
+            val refresh = sidebar.getDeclaredMethod("g").apply { check(returnType == Void.TYPE) }
+            val filter = com.hmodule.controls.SidebarGameCenter(gameId)
+            module.hook(visibleItems).setId("sidebarGames")
+                .setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE).intercept(Hooker { chain ->
+                    filter.remember(chain.thisObject)
+                    val items = chain.proceed()
+                    if (items is List<*>) filter.filter(items, gMasterOn && gControlOn && gSidebarGameOn) else items
+                })
+            refreshSidebarGames = {
+                for (controller in filter.controllers()) try { refresh.invoke(controller) }
+                catch (e: Exception) { LogUtil.warn("侧边栏游戏中心刷新失败: ${e.message}") }
+            }
+            LogUtil.info("  ✓ 侧边栏游戏中心精简")
+        } catch (e: Exception) { LogUtil.warn("侧边栏游戏中心数据 Hook 不可用: ${e.message}") }
 
 
         try {

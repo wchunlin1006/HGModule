@@ -96,6 +96,15 @@ class IntegratedSettingsTest {
             assertThrows(SecurityException::class.java) { provider.call("write",null,null) }
         } finally { ShadowBinder.setCallingUid(android.os.Process.myUid()) }
     }
+    @Test fun formerWechatScopeHasNoConfigurationEntry() {
+        val foreign = object : ContextWrapper(app) {
+            override fun getPackageName() = "com.tencent.mm"
+            override fun getApplicationContext(): Context = this
+        }
+        assertThrows(IllegalArgumentException::class.java) { ModuleConfig.open(foreign) }
+        val provider = Robolectric.buildContentProvider(ConfigurationProvider::class.java).create().get()
+        assertThrows(IllegalArgumentException::class.java) { provider.call("wechat_read", null, null) }
+    }
     @Test fun explicitThemeOverridesSystemAndSystemModeFollowsConfiguration() {
         val prefs = ModuleConfig.local(app)
         MiuixUi.preferences = prefs

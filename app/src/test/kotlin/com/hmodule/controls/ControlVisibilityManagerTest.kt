@@ -16,6 +16,119 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class ControlVisibilityManagerTest {
+    @Test fun legacySidebarHidesGameRowWithItsIconAndKeepsOtherSectionsAndNonSidebarText() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val root = FrameLayout(activity)
+        val sidebar = LinearLayout(activity).apply { id = android.R.id.content }
+        // Use a resource alias for the native sidebar boundary.
+        val namedResources = object : android.content.res.Resources(activity.assets,
+            activity.resources.displayMetrics, activity.resources.configuration) {
+            override fun getResourceEntryName(id: Int): String = if (id == android.R.id.content) "sidebar" else super.getResourceEntryName(id)
+        }
+        val context = object : android.content.ContextWrapper(activity) { override fun getResources() = namedResources }
+        val host = LinearLayout(context).apply { id = android.R.id.content }
+        val game = LinearLayout(activity)
+        game.addView(TextView(activity).apply { text = "游戏中心" })
+        val icon = View(activity); game.addView(icon)
+        val settings = TextView(activity).apply { text = "设置" }
+        val outside = TextView(activity).apply { text = "游戏中心" }
+        root.addView(sidebar); sidebar.addView(host); host.addView(game); host.addView(settings); root.addView(outside)
+        activity.setContentView(root)
+        val manager = ControlVisibilityManager { it() }
+        manager.policy = ControlPolicy(true, true, setOf(ControlTarget.GAME_CENTER)).forPage(false)
+        manager.sync(root)
+        assertEquals(View.GONE, game.visibility)
+        assertFalse(icon.isShown)
+        assertEquals(View.VISIBLE, settings.visibility)
+        assertEquals(View.VISIBLE, outside.visibility)
+        manager.policy = manager.policy.copy(hideEnabled = false)
+        manager.sync(root)
+        assertEquals(View.VISIBLE, game.visibility)
+    }
+    @Test fun individualChannelTabsRestoreAndOnlyTheSiblingChannelPagerIsLocked() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val root = FrameLayout(activity)
+        val top = LinearLayout(activity)
+        val tabs = LinearLayout(activity).apply { id = android.R.id.tabs }
+        val search = View(activity)
+        val menu = View(activity)
+        top.addView(tabs); top.addView(search); top.addView(menu)
+        val labels = listOf("关注", "推荐", "漫剧", "真人剧").map { label ->
+            FrameLayout(activity).apply {
+                addView(TextView(activity).apply { text = label })
+                addView(View(activity)) // tab icon / badge
+                tabs.addView(this)
+            }
+        }
+        val pager = com.dragon.read.widget.viewpager.CustomScrollViewPager(activity)
+        val video = com.dragon.read.widget.viewpager.CustomScrollViewPager(activity)
+        root.addView(top); root.addView(pager); pager.addView(video)
+        activity.setContentView(root)
+        val manager = ControlVisibilityManager { it() }
+        manager.resourceOverrides = mapOf("tabs" to "top_tabs")
+        val partial = ControlPolicy(true, true, setOf(ControlTarget.TOP_TABS),
+            allChannels = false, hiddenChannels = setOf(ChannelTarget.FOLLOW, ChannelTarget.COMIC))
+        manager.policy = partial
+        repeat(2) { manager.sync(root) }
+        assertEquals(View.VISIBLE, tabs.visibility)
+        assertEquals(View.GONE, labels[0].visibility)
+        assertEquals(View.VISIBLE, labels[1].visibility)
+        assertEquals(View.GONE, labels[2].visibility)
+        assertEquals(View.VISIBLE, labels[3].visibility)
+        assertFalse(manager.blocksChannelSwipe(pager))
+        assertEquals(setOf(pager), manager.channelPagers(root))
+        assertTrue(manager.isChannelPager(pager))
+        assertFalse(manager.isChannelPager(video))
+        manager.policy = partial.copy(allChannels = true)
+        manager.sync(root)
+        assertEquals(View.INVISIBLE, tabs.visibility)
+        assertEquals(View.VISIBLE, search.visibility)
+        assertEquals(View.VISIBLE, menu.visibility)
+        assertTrue(manager.blocksChannelSwipe(pager))
+        assertFalse(manager.blocksChannelSwipe(video))
+        manager.policy = partial.copy(hiddenChannels = setOf(ChannelTarget.LIVE))
+        manager.sync(root)
+        assertEquals(View.VISIBLE, labels[0].visibility)
+        assertEquals(View.VISIBLE, labels[2].visibility)
+        assertEquals(View.GONE, labels[3].visibility)
+        manager.policy = partial.copy(hideEnabled = false)
+        manager.sync(root)
+        assertTrue(labels.all { it.visibility == View.VISIBLE })
+        assertFalse(manager.blocksChannelSwipe(pager))
+        manager.policy = partial
+        manager.sync(root)
+        // Native tabs can reuse the same row for a newly named channel.
+        (labels[0].getChildAt(0) as TextView).text = "真人剧"
+        manager.sync(root)
+        assertEquals(View.VISIBLE, labels[0].visibility)
+        (labels[0].getChildAt(0) as TextView).text = "推荐"
+        manager.sync(root)
+        assertEquals(View.VISIBLE, labels[0].visibility)
+        manager.restoreAll()
+        assertTrue(labels.all { it.visibility == View.VISIBLE })
+    }
+
+    @Test fun individuallyIdentifiedChannelSlotHidesItsBadgeAsWellAsTheText() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val root = FrameLayout(activity)
+        val tabs = LinearLayout(activity)
+        val follow = FrameLayout(activity)
+        val comic = FrameLayout(activity)
+        root.addView(tabs); tabs.addView(follow); tabs.addView(comic)
+        follow.addView(TextView(activity).apply { text = "关注" })
+        val badge = View(activity); follow.addView(badge)
+        comic.addView(TextView(activity).apply { text = "漫剧" })
+        activity.setContentView(root)
+        val manager = ControlVisibilityManager { it() }
+        manager.bind(follow, ControlTarget.TOP_TABS)
+        manager.bind(comic, ControlTarget.TOP_TABS)
+        manager.policy = ControlPolicy(true, true, setOf(ControlTarget.TOP_TABS),
+            allChannels = false, hiddenChannels = setOf(ChannelTarget.FOLLOW))
+        manager.sync(root)
+        assertEquals(View.GONE, follow.visibility)
+        assertFalse(badge.isShown)
+        assertEquals(View.VISIBLE, comic.visibility)
+    }
     @Test fun siblingAuthorFollowsPackedButtonsWhenRestoredAndAcrossNativeLayouts() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val root = com.dragon.read.component.shortvideo.impl.rightview.ShortSeriesRightView(activity)

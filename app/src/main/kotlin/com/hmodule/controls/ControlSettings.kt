@@ -44,6 +44,11 @@ class ControlSettings(private val preferences: SharedPreferences) {
 
     fun opacityPercent(): Int = preferences.getInt(OPACITY_KEY, 100).coerceIn(0, 100)
 
+    fun allChannels(): Boolean = preferences.getBoolean(ALL_CHANNELS_KEY, true)
+    fun hiddenChannels(): Set<ChannelTarget> = ChannelTarget.entries.filterTo(linkedSetOf()) {
+        preferences.getBoolean(it.preferenceKey, false)
+    }
+
     fun show(activity: Activity, changed: () -> Unit) {
         val p = com.hmodule.ui.MiuixUi.palette(activity)
         fun dp(value: Int) = com.hmodule.ui.MiuixUi.dp(activity, value)
@@ -61,28 +66,53 @@ class ControlSettings(private val preferences: SharedPreferences) {
                 setPadding(dp(12), dp(22), dp(12), dp(10))
             })
             val card = com.hmodule.ui.MiuixUi.card(activity)
-            for (target in targets) {
+            fun addToggle(title: String, key: String, enabled: Boolean, indent: Int = 0,
+                parent: LinearLayout = card, onToggle: (() -> Unit)? = null): LinearLayout {
                 val row = LinearLayout(activity).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     minimumHeight = dp(62)
-                    setPadding(dp(20), dp(4), dp(16), dp(4))
+                    setPadding(dp(20 + indent), dp(4), dp(16), dp(4))
                     background = com.hmodule.ui.MiuixUi.ripple(activity)
                 }
-                row.addView(com.hmodule.ui.MiuixUi.text(activity, target.title, 16f, p.text),
+                row.addView(com.hmodule.ui.MiuixUi.text(activity, title, 16f, p.text),
                     LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 val toggle = Switch(activity).apply {
-                    contentDescription = target.title
+                    contentDescription = title
                     com.hmodule.ui.MiuixUi.styleSwitch(this)
-                    isChecked = target in selected
+                    isChecked = enabled
                     setOnCheckedChangeListener { _, checked ->
-                        preferences.edit().putBoolean(target.preferenceKey, checked).apply()
+                        preferences.edit().putBoolean(key, checked).apply()
+                        onToggle?.invoke()
                         changed()
                     }
                 }
                 row.addView(toggle)
                 row.setOnClickListener { toggle.isChecked = !toggle.isChecked }
-                com.hmodule.ui.MiuixUi.addRow(card, row)
+                com.hmodule.ui.MiuixUi.addRow(parent, row)
+                return row
+            }
+            for (target in targets) {
+                if (target != ControlTarget.TOP_TABS) {
+                    addToggle(target.title, target.preferenceKey, target in selected)
+                    continue
+                }
+                val details = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+                val channels = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+                fun refreshExpansion() {
+                    details.visibility = if (preferences.getBoolean(target.preferenceKey, false)) View.VISIBLE else View.GONE
+                    channels.visibility = if (allChannels()) View.GONE else View.VISIBLE
+                }
+                addToggle(target.title, target.preferenceKey, target in selected, onToggle = ::refreshExpansion)
+                // Keep nested options inside the same card, without rebuilding the page on each click.
+                addToggle("全部", ALL_CHANNELS_KEY, allChannels(), 16, details, ::refreshExpansion)
+                for (channel in ChannelTarget.entries) {
+                    addToggle(channel.title, channel.preferenceKey,
+                        preferences.getBoolean(channel.preferenceKey, false), 32, channels)
+                }
+                details.addView(channels)
+                card.addView(details)
+                refreshExpansion()
             }
             content.addView(card)
         }
@@ -159,5 +189,8 @@ class ControlSettings(private val preferences: SharedPreferences) {
         dialog = ui.showPopup(activity, "默认画质", content)
     }
 
-    companion object { const val OPACITY_KEY = "guoplus_control_opacity" }
+    companion object {
+        const val OPACITY_KEY = "guoplus_control_opacity"
+        const val ALL_CHANNELS_KEY = "guoplus_hide_all_channels"
+    }
 }
