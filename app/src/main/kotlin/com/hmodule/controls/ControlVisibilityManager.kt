@@ -15,7 +15,7 @@ import java.util.WeakHashMap
 /** Tracks native control state; full clear also suppresses safe overlay hosts. */
 class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
     private data class State(
-        val target: ControlTarget,
+        var target: ControlTarget,
         var nativeVisibility: Int,
         var nativeAlpha: Float,
         var hidden: Boolean = false,
@@ -32,6 +32,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
     private val opacityHosts = WeakHashMap<View, Float>()
     private val interactionHosts = WeakHashMap<View, Int>()
     private val tabLayouts = WeakHashMap<View, ViewGroup.LayoutParams>()
+    private val automaticBottomTabs = WeakHashMap<View, Boolean>()
     private val pauseParents = WeakHashMap<View, ParentState>()
     private val backdrops = WeakHashMap<View, BackdropState>()
     private val rowShifts = WeakHashMap<View, RowShift>()
@@ -78,6 +79,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
                 restoreClearHosts(); restoreBackdrops()
             }
             lastKeepDanmaku = policy.keepDanmaku
+            refreshBottomTabBindings(root)
             discover(root)
             syncChannels(root)
             syncOpacityHosts(root)
@@ -170,7 +172,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         } finally { applying = false }
     }
 
-    fun clear() { restoreAll(); controls.clear(); seen.clear(); resourceNames.clear(); unsupportedBottomLayouts.clear() }
+    fun clear() { restoreAll(); controls.clear(); automaticBottomTabs.clear(); seen.clear(); resourceNames.clear(); unsupportedBottomLayouts.clear() }
 
     private fun nativeVisibility(view: View): Int = controls[view]?.nativeVisibility ?: infoHosts[view] ?:
         clearHosts[view] ?: interactionHosts[view] ?: view.visibility
@@ -631,7 +633,7 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
                 val candidate = if (target.isBottomTab) bottomTabSlot(view) else controlContainer(view, target)
                 if (candidate !in controls) {
                     splitConflictingAncestors(candidate, target)
-                    bindWithoutHidingOtherTargets(candidate, target)
+                    bindWithoutHidingOtherTargets(candidate, target, automaticBottomTab = target.isBottomTab)
                 }
             }
         }
@@ -741,14 +743,15 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             val state = controls[node]
             if (state != null && state.target != target) {
                 controls.remove(node)
+                val automaticBottomTab = automaticBottomTabs.remove(node) == true
                 mutate { node.visibility = state.nativeVisibility; node.alpha = state.nativeAlpha }
-                bindWithoutHidingOtherTargets(node, state.target)
+                bindWithoutHidingOtherTargets(node, state.target, automaticBottomTab)
             }
             parent = node.parent as? ViewGroup
         }
     }
 
-    private fun bindWithoutHidingOtherTargets(view: View, target: ControlTarget) {
+    private fun bindWithoutHidingOtherTargets(view: View, target: ControlTarget, automaticBottomTab: Boolean = false) {
         if (containsVideoSurface(view)) return
         fun hasOther(node: View, depth: Int = 0): Boolean {
             if (depth > 8) return false
@@ -759,9 +762,12 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             for (i in 0 until view.childCount) {
                 val child = view.getChildAt(i)
                 if (identify(child)?.let { it != target } == true) continue
-                bindWithoutHidingOtherTargets(child, target)
+                bindWithoutHidingOtherTargets(child, target, automaticBottomTab)
             }
-        } else bind(view, target)
+        } else {
+            bind(view, target)
+            if (automaticBottomTab && controls[view]?.target?.isBottomTab == true) automaticBottomTabs[view] = true
+        }
     }
 
     private fun desiredAlpha(view: View, original: Float): Float {
@@ -809,23 +815,14 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
             "InfoPanelHotCommentView", "SeriesHotCommentView" -> return ControlTarget.HOT_COMMENT
         }
         resourceTargets[name]?.let { return it }
-        val text = ((view as? TextView)?.text?.toString() ?: view.contentDescription?.toString().orEmpty()).trim()
+        val text = (view as? TextView)?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: view.contentDescription?.toString()?.trim().orEmpty()
         if (text == "游戏中心" && insideSidebar(view)) return ControlTarget.GAME_CENTER
         if (text.contains("领金币") || text.contains("领取金币")) return ControlTarget.COIN_REWARD
         if (text.isEmpty()) return null
         // Counts can be filled after their containing information panel is already hidden.
         if (WATCHING_COUNT_TEXT.matches(text)) return ControlTarget.WATCHING_COUNT
-        if (insideBottomNav(view)) return when {
-            text == "首页" -> ControlTarget.HOME
-            text == "剧场" || text == "短剧" -> ControlTarget.THEATER
-            text == "商城" -> ControlTarget.MALL
-            text == "赚钱" -> ControlTarget.EARN
-            text == "我的" -> ControlTarget.PROFILE
-            // The welfare tab is pushed by a hot update, so match the label family
-            // instead of a fixed string ("福利", "福利中心", "领福利").
-            text.startsWith("福利") -> ControlTarget.WELFARE
-            else -> null
-        }
+        if (insideBottomNav(view)) return bottomNavTarget(view)
         val positionCandidate = text in TOP_TAB_LABELS || text in POSITION_LABELS ||
             INTERACTION_LABEL_PREFIXES.any { text.startsWith(it) }
         if (!positionCandidate) return null
@@ -904,12 +901,14 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         return false
     }
 
+    private fun isBottomNavHost(view: View): Boolean = view.javaClass.name in BOTTOM_NAV_CLASSES ||
+        entryName(view) in BOTTOM_NAV_NAMES
+
     private fun insideBottomNav(view: View): Boolean {
         var node: View? = view
         repeat(8) {
             val current = node ?: return false
-            if (current.javaClass.name in setOf("com.dragon.read.widget.BottomTabFrameLayout", "com.dragon.read.widget.BottomTabBarLayout") ||
-                entryName(current) in setOf("bottom_bar_layout", "aot", "bottom_tab_layout")) return true
+            if (isBottomNavHost(current)) return true
             node = current.parent as? View
         }
         return false
@@ -919,27 +918,88 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         var candidate = view
         repeat(6) {
             val parent = candidate.parent as? ViewGroup ?: return candidate
-            val slots = (0 until parent.childCount).count { hasNavLabel(parent.getChildAt(it)) }
-            if (slots >= 3) return candidate
-            if (parent.javaClass.name == "com.dragon.read.widget.BottomTabFrameLayout") return candidate
+            if (isBottomNavHost(parent)) return candidate
+            // An icon and its text can both carry the same label. They are one slot,
+            // while even two distinct sibling labels identify the actual tab row.
+            var first: ControlTarget? = null
+            for (index in 0 until parent.childCount) {
+                val target = findBottomTabTarget(parent.getChildAt(index)) ?: continue
+                if (first != null && first != target) return candidate
+                first = target
+            }
             candidate = parent
         }
         return view
     }
 
-    private fun hasNavLabel(view: View, depth: Int = 0): Boolean {
-        if (depth > 4) return false
-        if (view is TextView && isNavLabel(view.text?.toString()?.trim().orEmpty())) return true
-        return view is ViewGroup && (0 until view.childCount).any { hasNavLabel(view.getChildAt(it), depth + 1) }
+    private fun navLabelTarget(label: CharSequence?): ControlTarget? {
+        val text = label?.toString()?.trim().orEmpty()
+        return NAV_LABEL_TARGETS[text] ?: if (text.startsWith("福利")) ControlTarget.WELFARE else null
     }
 
-    private fun isNavLabel(text: String): Boolean = text in NAV_LABELS || text.startsWith("福利")
+    /** The same mappings drive binding, slot detection and width redistribution. */
+    private fun bottomNavTarget(view: View): ControlTarget? {
+        val name = entryName(view)
+        val mapped = resourceOverrides[name]?.let { key -> ControlTarget.entries.firstOrNull { it.key == key } }
+            ?: (if (profileId == "CN-7.3.2.32") CN_73232_TARGETS[name] else null)
+            ?: resourceTargets[name]
+        if (mapped != null) return mapped.takeIf { it.isBottomTab }
+        return navLabelTarget((view as? TextView)?.text) ?: navLabelTarget(view.contentDescription)
+    }
+
+    private fun findBottomTabTarget(view: View, depth: Int = 0): ControlTarget? {
+        if (depth > 4 || view.tag == MODULE_UI_TAG) return null
+        bottomNavTarget(view)?.let { return it }
+        if (view !is ViewGroup) return null
+        var found: ControlTarget? = null
+        for (index in 0 until view.childCount) {
+            val target = findBottomTabTarget(view.getChildAt(index), depth + 1) ?: continue
+            if (found != null && found != target) return null // Never bind a container of different tabs.
+            found = target
+        }
+        return found
+    }
+
+    /** Recheck only auto-bound navigation slots, retaining the latest native state. */
+    private fun refreshBottomTabBindings(root: View) {
+        for (view in automaticBottomTabs.keys.toList()) {
+            if (!inside(view, root)) continue
+            val inNavigation = insideBottomNav(view)
+            val state = controls[view]
+            if (state == null) {
+                if (!inNavigation) {
+                    automaticBottomTabs.remove(view)
+                    tabLayouts.remove(view)?.let { saved -> mutate { view.layoutParams = saved } }
+                }
+                continue
+            }
+            val target = if (inNavigation) findBottomTabTarget(view) else null
+            if (target != null) {
+                state.target = target
+            } else {
+                // Unknown replacement tabs still occupy a native navigation slot.
+                // Include them in reflow, but never keep the previous hide policy.
+                if (!inNavigation) automaticBottomTabs.remove(view)
+                controls.remove(view)
+                val savedLayout = tabLayouts.remove(view)
+                mutate {
+                    if (view.visibility != state.nativeVisibility) view.visibility = state.nativeVisibility
+                    if (view.alpha != state.nativeAlpha) view.alpha = state.nativeAlpha
+                    if (savedLayout != null) view.layoutParams = savedLayout
+                }
+            }
+        }
+    }
 
     private fun reflowBottomTabs(root: View) {
-        val parents = controls.entries.filter { it.value.target.isBottomTab && inside(it.key, root) }
-            .mapNotNull { it.key.parent as? ViewGroup }.distinct()
+        val candidates = controls.entries.filter { it.value.target.isBottomTab }.map { it.key } +
+            automaticBottomTabs.keys.toList() + tabLayouts.keys.toList()
+        val parents = candidates.filter { inside(it, root) }.mapNotNull { it.parent as? ViewGroup }.distinct()
         for (parent in parents) {
-            val tabs = (0 until parent.childCount).map(parent::getChildAt).filter { hasNavLabel(it) }
+            val tabs = (0 until parent.childCount).map(parent::getChildAt).filter {
+                controls[it]?.target?.isBottomTab == true || it in automaticBottomTabs ||
+                    it in tabLayouts || findBottomTabTarget(it) != null
+            }
             val hidden = tabs.any { controls[it]?.hidden == true }
             if (!hidden) {
                 for (tab in tabs) tabLayouts.remove(tab)?.let { saved -> mutate { tab.layoutParams = saved } }
@@ -1012,7 +1072,13 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
 
     companion object {
         const val MODULE_UI_TAG = "GUOPLUS_MODULE_UI"
-        private val NAV_LABELS = setOf("首页", "剧场", "商城", "赚钱", "我的", "短剧", "福利")
+        private val BOTTOM_NAV_CLASSES = setOf("com.dragon.read.widget.BottomTabFrameLayout", "com.dragon.read.widget.BottomTabBarLayout")
+        private val BOTTOM_NAV_NAMES = setOf("bottom_bar_layout", "aot", "bottom_tab_layout")
+        private val NAV_LABEL_TARGETS = mapOf(
+            "首页" to ControlTarget.HOME, "剧场" to ControlTarget.THEATER, "短剧" to ControlTarget.THEATER,
+            "商城" to ControlTarget.MALL, "赚钱" to ControlTarget.EARN, "我的" to ControlTarget.PROFILE,
+            "福利" to ControlTarget.WELFARE, "领福利" to ControlTarget.WELFARE,
+        )
         private val TOP_TAB_LABELS = setOf("推荐", "关注", "精选", "短剧", "漫剧", "真人剧", "剧场")
         private val POSITION_LABELS = setOf("搜索", "菜单", "更多", "收藏", "评论", "点赞", "分享", "全屏观看", "全屏播放", "热评")
         private val INTERACTION_LABEL_PREFIXES = listOf("收藏，", "收藏,", "评论，", "评论,", "点赞，", "点赞,", "分享，", "分享,")

@@ -24,7 +24,7 @@ jobs:
         run: bash gradlew testReleaseUnitTest lintRelease assembleRelease --console=plain
       - uses: actions/upload-artifact@v4
         with:
-          name: HGModule-v1.1.0
+          name: HGModule-v1.2.0
           path: |
             app/build/outputs/apk/release/*.apk
             adaptation/gp-*.json

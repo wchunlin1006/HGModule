@@ -2,15 +2,15 @@
 
 面向红果短剧的 Xposed / LSPosed 模块，提供控件精简、清屏播放、画质与倍速设置。
 
-安装包名：`com.hmodule` · 应用名称：**果+** · 当前版本：**v1.1.1**
+安装包名：`com.hmodule` · 应用名称：**果+** · 当前版本：**v1.2.0**
 
-[源码仓库](https://github.com/wchunlin1006/HGModule) · [安装包](https://github.com/wchunlin1006/HGModule/releases/tag/v1.1.1) · [Hook JSON](https://github.com/wchunlin1006/HGModule/releases/tag/Adaptation) · [问题反馈](https://github.com/wchunlin1006/HGModule/issues)
+[源码仓库](https://github.com/wchunlin1006/HGModule) · [安装包](https://github.com/wchunlin1006/HGModule/releases/tag/v1.2.0) · [Hook JSON](https://github.com/wchunlin1006/HGModule/releases/tag/Adaptation) · [问题反馈](https://github.com/wchunlin1006/HGModule/issues)
 
 ## 功能
 
 | 分类 | 功能 |
 | --- | --- |
-| 精简控件 | 按顶部入口、播放操作、互动与弹幕、短剧信息、底部导航分组，逐项选择隐藏，支持精简“领金币”悬浮球；开关统一启停 |
+| 精简控件 | 按顶部入口、侧边栏、播放操作、互动与弹幕、短剧信息、底部导航分组，逐项选择隐藏，支持精简“游戏中心”“领金币”悬浮球及底栏“福利”标签；频道标签支持全部精简或自定义选择“关注、漫剧、真人剧”，滑动切换会跳过已精简频道；开关统一启停 |
 | 清屏播放 | 隐藏播放页控件与状态栏，可保留滚动弹幕并隐藏发弹幕按钮；退出后恢复未精简的控件；可从长按播放抽屉的“清屏播放（果+）”切换 |
 | 暂停时退出清屏 | 暂停时临时显示未精简控件，继续播放后恢复清屏；精简选择保持有效 |
 | 显示设置 | 控件透明度、隐藏状态栏、隐藏系统导航小白条 |
