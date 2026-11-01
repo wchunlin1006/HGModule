@@ -815,12 +815,15 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
         if (text.isEmpty()) return null
         // Counts can be filled after their containing information panel is already hidden.
         if (WATCHING_COUNT_TEXT.matches(text)) return ControlTarget.WATCHING_COUNT
-        if (insideBottomNav(view)) return when (text) {
-            "首页" -> ControlTarget.HOME
-            "剧场", "短剧" -> ControlTarget.THEATER
-            "商城" -> ControlTarget.MALL
-            "赚钱" -> ControlTarget.EARN
-            "我的" -> ControlTarget.PROFILE
+        if (insideBottomNav(view)) return when {
+            text == "首页" -> ControlTarget.HOME
+            text == "剧场" || text == "短剧" -> ControlTarget.THEATER
+            text == "商城" -> ControlTarget.MALL
+            text == "赚钱" -> ControlTarget.EARN
+            text == "我的" -> ControlTarget.PROFILE
+            // The welfare tab is pushed by a hot update, so match the label family
+            // instead of a fixed string ("福利", "福利中心", "领福利").
+            text.startsWith("福利") -> ControlTarget.WELFARE
             else -> null
         }
         val positionCandidate = text in TOP_TAB_LABELS || text in POSITION_LABELS ||
@@ -926,9 +929,11 @@ class ControlVisibilityManager(private val mutate: (() -> Unit) -> Unit) {
 
     private fun hasNavLabel(view: View, depth: Int = 0): Boolean {
         if (depth > 4) return false
-        if (view is TextView && view.text?.toString()?.trim() in NAV_LABELS) return true
+        if (view is TextView && isNavLabel(view.text?.toString()?.trim().orEmpty())) return true
         return view is ViewGroup && (0 until view.childCount).any { hasNavLabel(view.getChildAt(it), depth + 1) }
     }
+
+    private fun isNavLabel(text: String): Boolean = text in NAV_LABELS || text.startsWith("福利")
 
     private fun reflowBottomTabs(root: View) {
         val parents = controls.entries.filter { it.value.target.isBottomTab && inside(it.key, root) }

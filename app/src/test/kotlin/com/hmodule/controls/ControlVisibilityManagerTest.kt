@@ -509,6 +509,32 @@ class ControlVisibilityManagerTest {
         assertTrue(tabs.all { it.visibility == View.VISIBLE && it.layoutParams.width == 80 })
     }
 
+    @Test fun hotUpdatedWelfareTabIsIdentifiedInsideBottomNavAndSelectable() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val root = FrameLayout(activity)
+        val nav = com.dragon.read.widget.BottomTabFrameLayout(activity)
+        val slots = LinearLayout(activity)
+        root.addView(nav); nav.addView(slots)
+        val labels = listOf("首页", "剧场", "商城", "赚钱", "福利中心", "我的")
+        val tabs = labels.map { label -> TextView(activity).apply { text = label; slots.addView(this, LinearLayout.LayoutParams(80, 50)) } }
+        // Same 福利 copy outside the navigation bar must not be bound as a tab.
+        val banner = TextView(activity).apply { text = "福利" }
+        root.addView(banner)
+        val manager = ControlVisibilityManager { it() }
+        manager.policy = ControlPolicy(masterEnabled = true, hideEnabled = true, selected = setOf(ControlTarget.WELFARE))
+        manager.sync(root)
+        assertEquals(View.GONE, tabs[4].visibility)
+        assertEquals(View.VISIBLE, banner.visibility)
+        assertTrue(listOf(0, 1, 2, 3, 5).all { tabs[it].visibility == View.VISIBLE })
+        assertEquals(View.GONE, manager.requestedVisibility(tabs[4], View.VISIBLE))
+        // The freed slot is redistributed, so the remaining tabs still fill the bar.
+        assertEquals(1f, (tabs[0].layoutParams as LinearLayout.LayoutParams).weight, 0f)
+        manager.policy = manager.policy.copy(selected = emptySet())
+        manager.sync(root)
+        assertTrue(tabs.all { it.visibility == View.VISIBLE })
+        assertEquals(80, tabs[4].layoutParams.width)
+    }
+
     @Test fun hidingOneInteractionPreservesTheNativeContainerHeight() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val root = FrameLayout(activity)
